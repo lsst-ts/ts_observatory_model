@@ -1,0 +1,28 @@
+.. ts_observatory_model documentation master file, created by Michael Reuter.
+
+.. include:: ../README.rst
+
+Table of Contents
+-----------------
+
+.. toctree::
+   :maxdepth: 2
+
+   installation
+   history
+
+Class Documentation
+-------------------
+
+.. autosummary::
+	:toctree: api
+
+	lsst.ts.observatory.model
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+
