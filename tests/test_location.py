@@ -1,5 +1,5 @@
 from __future__ import division
-import numpy
+import math
 import unittest
 
 import lsst.sims.utils as simsUtils
@@ -13,8 +13,8 @@ class ObservatoryLocationTest(unittest.TestCase):
         self.latitude_truth = 19.82396
         self.longitude_truth = -155.46984
         self.height_truth = 4213.0
-        self.latitude_rad_truth = numpy.radians(self.latitude_truth)
-        self.longitude_rad_truth = numpy.radians(self.longitude_truth)
+        self.latitude_rad_truth = math.radians(self.latitude_truth)
+        self.longitude_rad_truth = math.radians(self.longitude_truth)
 
     def test_information_after_standard_creation(self):
         location = ObservatoryLocation(self.latitude_rad_truth,
