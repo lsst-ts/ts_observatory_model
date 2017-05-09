@@ -25,7 +25,7 @@ class ObservatoryPosition(object):
         band_filter : str
             The band filter being used during the pointing.
         tracking : bool
-            The traccking state of the pointing.
+            The tracking state of the pointing.
         alt_rad : float
             The altitude (radians) of the pointing.
         az_rad : float

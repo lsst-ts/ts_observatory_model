@@ -34,6 +34,7 @@ class ObservatoryPositionTest(unittest.TestCase):
                                       self.rot_rad_truth)
 
     def test_basic_information_after_creation(self):
+        self.assertEqual(self.op.time, self.timestamp)
         self.assertEqual(self.op.ra, self.ra_truth)
         self.assertEqual(self.op.dec, self.dec_truth)
         self.assertEqual(self.op.ang, self.ang_truth)
