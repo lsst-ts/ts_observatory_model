@@ -17,13 +17,32 @@ class TargetTest(unittest.TestCase):
         self.num_exposures = 2
         self.exposure_times = [15.0, 15.0]
 
+        self.alt = 45.0
+        self.az = 225.0
+        self.rot = 30.0
+        self.telalt = 45.0
+        self.telaz = 225.0
+        self.telrot = 30.0
+
         self.ra_rad = math.radians(self.ra)
         self.dec_rad = math.radians(self.dec)
         self.ang_rad = math.radians(self.ang)
+        self.alt_rad = math.radians(self.alt)
+        self.az_rad = math.radians(self.az)
+        self.rot_rad = math.radians(self.rot)
+        self.telalt_rad = math.radians(self.telalt)
+        self.telaz_rad = math.radians(self.telaz)
+        self.telrot_rad = math.radians(self.telrot)
 
         self.target = Target(self.targetId, self.fieldId, self.band_filter,
                              self.ra_rad, self.dec_rad, self.ang_rad,
                              self.num_exposures, self.exposure_times)
+        self.target.alt_rad = self.alt_rad
+        self.target.az_rad = self.az_rad
+        self.target.rot_rad = self.rot_rad
+        self.target.telalt_rad = self.telalt_rad
+        self.target.telaz_rad = self.telaz_rad
+        self.target.telrot_rad = self.telrot_rad
 
     def test_basic_information_after_creation(self):
         self.assertEqual(self.target.targetid, self.targetId)
@@ -36,8 +55,8 @@ class TargetTest(unittest.TestCase):
 
     def test_string_representation(self):
         truth_str = "targetid=3 field=2573 filter=r exp_times=[15.0, 15.0] "\
-                    "ra=300.519 dec=-1.721 ang=45.000 alt=0.000 az=0.000 "\
-                    "rot=0.000 telalt=0.000 telaz=0.000 telrot=0.000 "\
+                    "ra=300.519 dec=-1.721 ang=45.000 alt=45.000 az=225.000 "\
+                    "rot=30.000 telalt=45.000 telaz=225.000 telrot=30.000 "\
                     "time=0.0 airmass=0.000 brightness=0.000 "\
                     "cloud=0.00 seeing=0.00 visits=0 progress=0.00% "\
                     "seqid=0 ssname= groupid=0 groupix=0 "\
@@ -46,6 +65,17 @@ class TargetTest(unittest.TestCase):
                     "propid=[] need=[] bonus=[] value=[] propboost=[] "\
                     "slewtime=0.000 cost=0.000 rank=0.000"
         self.assertEqual(str(self.target), truth_str)
+
+    def test_driver_state_copy(self):
+        target2 = Target()
+        target2.copy_driver_state(self.target)
+        self.assertEqual(target2.alt_rad, self.alt_rad)
+        self.assertEqual(target2.az_rad, self.az_rad)
+        self.assertEqual(target2.ang_rad, self.ang_rad)
+        self.assertEqual(target2.rot_rad, self.rot_rad)
+        self.assertEqual(target2.telalt_rad, self.telalt_rad)
+        self.assertEqual(target2.telaz_rad, self.telaz_rad)
+        self.assertEqual(target2.telrot_rad, self.telrot_rad)
 
     def test_copy_creation(self):
         target2 = self.target.get_copy()

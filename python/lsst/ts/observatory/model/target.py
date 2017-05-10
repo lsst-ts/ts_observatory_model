@@ -102,6 +102,23 @@ class Target(object):
         # stamped at observation
         self.last_visit_time = 0.0
 
+    def copy_driver_state(self, target):
+        """Copy driver state from another target.
+
+        Parameters
+        ----------
+        target : :class:`.Target`
+            An instance of a target from which to get the driver state
+            information.
+        """
+        self.alt_rad = target.alt_rad
+        self.az_rad = target.az_rad
+        self.rot_rad = target.rot_rad
+        self.telalt_rad = target.telalt_rad
+        self.telaz_rad = target.telaz_rad
+        self.telrot_rad = target.telrot_rad
+        self.ang_rad = target.ang_rad
+
     def get_copy(self):
         """:class:`.Target`: Get copy of the instance."""
         newtarget = Target()
