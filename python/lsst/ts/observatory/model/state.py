@@ -71,6 +71,12 @@ class ObservatoryState(ObservatoryPosition):
         self.mountedfilters = list(mountedfilters)
         self.unmountedfilters = list(unmountedfilters)
 
+    def __str__(self):
+        """str: The string representation of the instance."""
+        return "%s telaz=%.3f telrot=%.3f mounted=%s unmounted=%s" % \
+               (ObservatoryPosition.__str__(self), self.telaz, self.telrot,
+                self.mountedfilters, self.unmountedfilters)
+
     @property
     def domalt(self):
         """float: Return the altitude (degrees) of the dome opening."""
@@ -124,12 +130,6 @@ class ObservatoryState(ObservatoryPosition):
     def telrot_peakspeed(self):
         """float: Return the telescope rotator peak speed (degrees/sec)."""
         return math.degrees(self.telrot_peakspeed_rad)
-
-    def __str__(self):
-        """str: The string representation of the instance."""
-        return "%s telaz=%.3f telrot=%.3f mounted=%s unmounted=%s" % \
-               (ObservatoryPosition.__str__(self), self.telaz, self.telrot,
-                self.mountedfilters, self.unmountedfilters)
 
     def set(self, newstate):
         """Override the current state information with new values.
