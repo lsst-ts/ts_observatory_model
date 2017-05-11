@@ -4,12 +4,11 @@ import os
 
 import palpy as pal
 
-from lsst.ts.observatory.model import ObservatoryLocation
+from lsst.ts.dateloc import DateProfile, ObservatoryLocation
 from lsst.ts.observatory.model import ObservatoryModelParameters
 from lsst.ts.observatory.model import ObservatoryPosition
 from lsst.ts.observatory.model import ObservatoryState
 from lsst.ts.observatory.model import compare, read_conf_file
-from lsst.ts.scheduler.sky_model import DateProfile
 
 __all__ = ["ObservatoryModel"]
 

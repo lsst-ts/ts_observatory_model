@@ -1,5 +1,5 @@
 setupRequired(python)
-setupRequired(sims_utils)
+setupRequired(ts_dateloc)
 setupRequired(utils)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)

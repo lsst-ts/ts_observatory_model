@@ -1,7 +1,8 @@
 import math
 import unittest
 
-from lsst.ts.observatory.model import ObservatoryLocation, ObservatoryModel, Target
+from lsst.ts.dateloc import ObservatoryLocation
+from lsst.ts.observatory.model import ObservatoryModel, Target
 
 class ObservatoryModelTest(unittest.TestCase):
 
