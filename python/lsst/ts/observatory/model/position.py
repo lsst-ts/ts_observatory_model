@@ -54,10 +54,18 @@ class ObservatoryPosition(object):
                 self.tracking, self.alt, self.az, self.pa, self.rot)
 
     @property
-    def ra(self):
-        """float: Return the right ascension (degrees) of the pointing
-                  position."""
-        return math.degrees(self.ra_rad)
+    def alt(self):
+        """float: Return the altitude (degrees) of the pointing position."""
+        return math.degrees(self.alt_rad)
+
+    @property
+    def ang(self):
+        return math.degrees(self.ang_rad)
+
+    @property
+    def az(self):
+        """float: Return the azimuth (degrees) of the pointing position."""
+        return math.degrees(self.az_rad)
 
     @property
     def dec(self):
@@ -66,22 +74,14 @@ class ObservatoryPosition(object):
         return math.degrees(self.dec_rad)
 
     @property
-    def ang(self):
-        return math.degrees(self.ang_rad)
-
-    @property
-    def alt(self):
-        """float: Return the altitude (degrees) of the pointing position."""
-        return math.degrees(self.alt_rad)
-
-    @property
-    def az(self):
-        """float: Return the azimuth (degrees) of the pointing position."""
-        return math.degrees(self.az_rad)
-
-    @property
     def pa(self):
         return math.degrees(self.pa_rad)
+
+    @property
+    def ra(self):
+        """float: Return the right ascension (degrees) of the pointing
+                  position."""
+        return math.degrees(self.ra_rad)
 
     @property
     def rot(self):

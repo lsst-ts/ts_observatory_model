@@ -102,6 +102,80 @@ class Target(object):
         # stamped at observation
         self.last_visit_time = 0.0
 
+    def __str__(self):
+        """str: The string representation of the instance."""
+        return ("targetid=%d field=%d filter=%s exp_times=%s ra=%.3f "
+                "dec=%.3f ang=%.3f alt=%.3f az=%.3f rot=%.3f "
+                "telalt=%.3f telaz=%.3f telrot=%.3f "
+                "time=%.1f airmass=%.3f brightness=%.3f "
+                "cloud=%.2f seeing=%.2f "
+                "visits=%i progress=%.2f%% "
+                "seqid=%i ssname=%s groupid=%i groupix=%i "
+                "firstdd=%s ddvisits=%i "
+                "need=%.3f bonus=%.3f value=%.3f propboost=%.3f "
+                "propid=%s need=%s bonus=%s value=%s propboost=%s "
+                "slewtime=%.3f cost=%.3f rank=%.3f" %
+                (self.targetid, self.fieldid, self.filter,
+                 str(self.exp_times),
+                 self.ra, self.dec, self.ang,
+                 self.alt, self.az, self.rot,
+                 self.telalt, self.telaz, self.telrot,
+                 self.time, self.airmass, self.sky_brightness,
+                 self.cloud, self.seeing,
+                 self.visits, 100 * self.progress,
+                 self.sequenceid, self.subsequencename,
+                 self.groupid, self.groupix,
+                 self.is_dd_firstvisit, self.remaining_dd_visits,
+                 self.need, self.bonus, self.value, self.propboost,
+                 self.propid_list, numpy.round(self.need_list, 3), numpy.round(self.bonus_list, 3),
+                 numpy.round(self.value_list, 3), numpy.round(self.propboost_list, 3),
+                 self.slewtime, self.cost, self.rank))
+
+    @property
+    def alt(self):
+        """float: The altitude (degrees) of the target."""
+        return math.degrees(self.alt_rad)
+
+    @property
+    def ang(self):
+        """float: The sky angle (degrees) of the target."""
+        return math.degrees(self.ang_rad)
+
+    @property
+    def az(self):
+        """float: The azimuth (degrees) of the target."""
+        return math.degrees(self.az_rad)
+
+    @property
+    def dec(self):
+        """float: The declination (degrees) of the target."""
+        return math.degrees(self.dec_rad)
+
+    @property
+    def ra(self):
+        """float: The right ascension (degrees) of the target."""
+        return math.degrees(self.ra_rad)
+
+    @property
+    def rot(self):
+        """float: The rotator angle (degrees) of the target."""
+        return math.degrees(self.rot_rad)
+
+    @property
+    def telalt(self):
+        """float: The telescope altitude (degrees) for the target."""
+        return math.degrees(self.telalt_rad)
+
+    @property
+    def telaz(self):
+        """float: The telescope azimuth (degrees) for the target."""
+        return math.degrees(self.telaz_rad)
+
+    @property
+    def telrot(self):
+        """float: The telescope rotator angle (degrees) for the target."""
+        return math.degrees(self.telrot_rad)
+
     def copy_driver_state(self, target):
         """Copy driver state from another target.
 
@@ -182,80 +256,6 @@ class Target(object):
         newtarget.dd_exptime_list = list(self.dd_exptime_list)
 
         return newtarget
-
-    def __str__(self):
-        """str: The string representation of the instance."""
-        return ("targetid=%d field=%d filter=%s exp_times=%s ra=%.3f "
-                "dec=%.3f ang=%.3f alt=%.3f az=%.3f rot=%.3f "
-                "telalt=%.3f telaz=%.3f telrot=%.3f "
-                "time=%.1f airmass=%.3f brightness=%.3f "
-                "cloud=%.2f seeing=%.2f "
-                "visits=%i progress=%.2f%% "
-                "seqid=%i ssname=%s groupid=%i groupix=%i "
-                "firstdd=%s ddvisits=%i "
-                "need=%.3f bonus=%.3f value=%.3f propboost=%.3f "
-                "propid=%s need=%s bonus=%s value=%s propboost=%s "
-                "slewtime=%.3f cost=%.3f rank=%.3f" %
-                (self.targetid, self.fieldid, self.filter,
-                 str(self.exp_times),
-                 self.ra, self.dec, self.ang,
-                 self.alt, self.az, self.rot,
-                 self.telalt, self.telaz, self.telrot,
-                 self.time, self.airmass, self.sky_brightness,
-                 self.cloud, self.seeing,
-                 self.visits, 100 * self.progress,
-                 self.sequenceid, self.subsequencename,
-                 self.groupid, self.groupix,
-                 self.is_dd_firstvisit, self.remaining_dd_visits,
-                 self.need, self.bonus, self.value, self.propboost,
-                 self.propid_list, numpy.round(self.need_list, 3), numpy.round(self.bonus_list, 3),
-                 numpy.round(self.value_list, 3), numpy.round(self.propboost_list, 3),
-                 self.slewtime, self.cost, self.rank))
-
-    @property
-    def ra(self):
-        """float: The right ascension (degrees) of the target."""
-        return math.degrees(self.ra_rad)
-
-    @property
-    def dec(self):
-        """float: The declination (degrees) of the target."""
-        return math.degrees(self.dec_rad)
-
-    @property
-    def ang(self):
-        """float: The sky angle (degrees) of the target."""
-        return math.degrees(self.ang_rad)
-
-    @property
-    def alt(self):
-        """float: The altitude (degrees) of the target."""
-        return math.degrees(self.alt_rad)
-
-    @property
-    def az(self):
-        """float: The azimuth (degrees) of the target."""
-        return math.degrees(self.az_rad)
-
-    @property
-    def rot(self):
-        """float: The rotator angle (degrees) of the target."""
-        return math.degrees(self.rot_rad)
-
-    @property
-    def telalt(self):
-        """float: The telescope altitude (degrees) for the target."""
-        return math.degrees(self.telalt_rad)
-
-    @property
-    def telaz(self):
-        """float: The telescope azimuth (degrees) for the target."""
-        return math.degrees(self.telaz_rad)
-
-    @property
-    def telrot(self):
-        """float: The telescope rotator angle (degrees) for the target."""
-        return math.degrees(self.telrot_rad)
 
     @classmethod
     def from_topic(cls, topic):

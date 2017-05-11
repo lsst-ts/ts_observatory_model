@@ -61,49 +61,30 @@ class ObservatoryModelParameters(object):
 
         self.prerequisites = {}
 
-    def configure_telescope(self, confdict):
-        """Configure the telescope related parameters.
-
-        Angles must be in degrees, speeds in degrees/sec and accelerations in
-        degrees/sec^2.
+    def configure_camera(self, confdict):
+        """Configure the camera related parameters.
 
         Parameters
         ----------
         confdict : dict
-            The set of telescope configuration parameters.
+            The set of camera configuration parameters.
         """
-        self.telalt_minpos_rad = math.radians(confdict["telescope"]["altitude_minpos"])
-        self.telalt_maxpos_rad = math.radians(confdict["telescope"]["altitude_maxpos"])
-        self.telaz_minpos_rad = math.radians(confdict["telescope"]["azimuth_minpos"])
-        self.telaz_maxpos_rad = math.radians(confdict["telescope"]["azimuth_maxpos"])
-        self.telalt_maxspeed_rad = math.radians(confdict["telescope"]["altitude_maxspeed"])
-        self.telalt_accel_rad = math.radians(confdict["telescope"]["altitude_accel"])
-        self.telalt_decel_rad = math.radians(confdict["telescope"]["altitude_decel"])
-        self.telaz_maxspeed_rad = math.radians(confdict["telescope"]["azimuth_maxspeed"])
-        self.telaz_accel_rad = math.radians(confdict["telescope"]["azimuth_accel"])
-        self.telaz_decel_rad = math.radians(confdict["telescope"]["azimuth_decel"])
-        self.mount_settletime = confdict["telescope"]["settle_time"]
+        self.readouttime = confdict["camera"]["readout_time"]
+        self.shuttertime = confdict["camera"]["shutter_time"]
+        self.filter_changetime = confdict["camera"]["filter_change_time"]
+        self.filter_removable_list = confdict["camera"]["filter_removable"]
+        self.filter_max_changes_burst_num = confdict["camera"]["filter_max_changes_burst_num"]
+        self.filter_max_changes_burst_time = confdict["camera"]["filter_max_changes_burst_time"]
+        self.filter_max_changes_avg_num = confdict["camera"]["filter_max_changes_avg_num"]
+        self.filter_max_changes_avg_time = confdict["camera"]["filter_max_changes_avg_time"]
+        if self.filter_max_changes_avg_num > 0:
+            self.filter_max_changes_avg_interval =\
+                self.filter_max_changes_avg_time / self.filter_max_changes_avg_num
+        else:
+            self.filter_max_changes_avg_interval = 0.0
 
-    def configure_rotator(self, confdict):
-        """Configure the telescope rotator related parameters.
-
-        Angles must be in degrees, speeds in degrees/sec and accelerations in
-        degrees/sec^2.
-
-        Parameters
-        ----------
-        confdict : dict
-            The set of telescope rotator configuration parameters.
-        """
-        self.telrot_minpos_rad = math.radians(confdict["rotator"]["minpos"])
-        self.telrot_maxpos_rad = math.radians(confdict["rotator"]["maxpos"])
-        self.telrot_maxspeed_rad = math.radians(confdict["rotator"]["maxspeed"])
-        self.telrot_accel_rad = math.radians(confdict["rotator"]["accel"])
-        self.telrot_decel_rad = math.radians(confdict["rotator"]["decel"])
-        self.telrot_filterchangepos_rad = \
-            math.radians(confdict["rotator"]["filter_change_pos"])
-        self.rotator_followsky = confdict["rotator"]["follow_sky"]
-        self.rotator_resumeangle = confdict["rotator"]["resume_angle"]
+        self.filter_init_mounted_list = confdict["camera"]["filter_mounted"]
+        self.filter_init_unmounted_list = confdict["camera"]["filter_unmounted"]
 
     def configure_dome(self, confdict):
         """Configure the dome related parameters.
@@ -140,30 +121,26 @@ class ObservatoryModelParameters(object):
         for index, alt in enumerate(self.optics_cl_altlimit):
             self.optics_cl_altlimit[index] = math.radians(self.optics_cl_altlimit[index])
 
-    def configure_camera(self, confdict):
-        """Configure the camera related parameters.
+    def configure_rotator(self, confdict):
+        """Configure the telescope rotator related parameters.
+
+        Angles must be in degrees, speeds in degrees/sec and accelerations in
+        degrees/sec^2.
 
         Parameters
         ----------
         confdict : dict
-            The set of camera configuration parameters.
+            The set of telescope rotator configuration parameters.
         """
-        self.readouttime = confdict["camera"]["readout_time"]
-        self.shuttertime = confdict["camera"]["shutter_time"]
-        self.filter_changetime = confdict["camera"]["filter_change_time"]
-        self.filter_removable_list = confdict["camera"]["filter_removable"]
-        self.filter_max_changes_burst_num = confdict["camera"]["filter_max_changes_burst_num"]
-        self.filter_max_changes_burst_time = confdict["camera"]["filter_max_changes_burst_time"]
-        self.filter_max_changes_avg_num = confdict["camera"]["filter_max_changes_avg_num"]
-        self.filter_max_changes_avg_time = confdict["camera"]["filter_max_changes_avg_time"]
-        if self.filter_max_changes_avg_num > 0:
-            self.filter_max_changes_avg_interval =\
-                self.filter_max_changes_avg_time / self.filter_max_changes_avg_num
-        else:
-            self.filter_max_changes_avg_interval = 0.0
-
-        self.filter_init_mounted_list = confdict["camera"]["filter_mounted"]
-        self.filter_init_unmounted_list = confdict["camera"]["filter_unmounted"]
+        self.telrot_minpos_rad = math.radians(confdict["rotator"]["minpos"])
+        self.telrot_maxpos_rad = math.radians(confdict["rotator"]["maxpos"])
+        self.telrot_maxspeed_rad = math.radians(confdict["rotator"]["maxspeed"])
+        self.telrot_accel_rad = math.radians(confdict["rotator"]["accel"])
+        self.telrot_decel_rad = math.radians(confdict["rotator"]["decel"])
+        self.telrot_filterchangepos_rad = \
+            math.radians(confdict["rotator"]["filter_change_pos"])
+        self.rotator_followsky = confdict["rotator"]["follow_sky"]
+        self.rotator_resumeangle = confdict["rotator"]["resume_angle"]
 
     def configure_slew(self, confdict, activities):
         """Configure the slew related parameters.
@@ -178,3 +155,26 @@ class ObservatoryModelParameters(object):
         for activity in activities:
             key = "prereq_" + activity
             self.prerequisites[activity] = confdict["slew"][key]
+
+    def configure_telescope(self, confdict):
+        """Configure the telescope related parameters.
+
+        Angles must be in degrees, speeds in degrees/sec and accelerations in
+        degrees/sec^2.
+
+        Parameters
+        ----------
+        confdict : dict
+            The set of telescope configuration parameters.
+        """
+        self.telalt_minpos_rad = math.radians(confdict["telescope"]["altitude_minpos"])
+        self.telalt_maxpos_rad = math.radians(confdict["telescope"]["altitude_maxpos"])
+        self.telaz_minpos_rad = math.radians(confdict["telescope"]["azimuth_minpos"])
+        self.telaz_maxpos_rad = math.radians(confdict["telescope"]["azimuth_maxpos"])
+        self.telalt_maxspeed_rad = math.radians(confdict["telescope"]["altitude_maxspeed"])
+        self.telalt_accel_rad = math.radians(confdict["telescope"]["altitude_accel"])
+        self.telalt_decel_rad = math.radians(confdict["telescope"]["altitude_decel"])
+        self.telaz_maxspeed_rad = math.radians(confdict["telescope"]["azimuth_maxspeed"])
+        self.telaz_accel_rad = math.radians(confdict["telescope"]["azimuth_accel"])
+        self.telaz_decel_rad = math.radians(confdict["telescope"]["azimuth_decel"])
+        self.mount_settletime = confdict["telescope"]["settle_time"]

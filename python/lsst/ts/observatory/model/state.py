@@ -83,30 +83,15 @@ class ObservatoryState(ObservatoryPosition):
         return math.degrees(self.domalt_rad)
 
     @property
-    def domaz(self):
-        """float: Return the azimuth (degrees) of the dome opening."""
-        return math.degrees(self.domaz_rad)
-
-    @property
-    def telalt(self):
-        """float: Return the altitude (degrees) of the telescope."""
-        return math.degrees(self.telalt_rad)
-
-    @property
-    def telaz(self):
-        """float: Return the azimuth (degrees) of the telescope."""
-        return math.degrees(self.telaz_rad)
-
-    @property
-    def telrot(self):
-        """float: Return the rotator angle (degrees) of the telescope."""
-        return math.degrees(self.telrot_rad)
-
-    @property
     def domalt_peakspeed(self):
         """float: Return the altitude peak speed (degrees/sec) of the dome
                   opening."""
         return math.degrees(self.domalt_peakspeed_rad)
+
+    @property
+    def domaz(self):
+        """float: Return the azimuth (degrees) of the dome opening."""
+        return math.degrees(self.domaz_rad)
 
     @property
     def domaz_peakspeed(self):
@@ -115,16 +100,31 @@ class ObservatoryState(ObservatoryPosition):
         return math.degrees(self.domaz_peakspeed_rad)
 
     @property
+    def telalt(self):
+        """float: Return the altitude (degrees) of the telescope."""
+        return math.degrees(self.telalt_rad)
+
+    @property
     def telalt_peakspeed(self):
         """float: Return the altitude peak speed (degrees/sec) of the
                   telescope."""
         return math.degrees(self.telalt_peakspeed_rad)
 
     @property
+    def telaz(self):
+        """float: Return the azimuth (degrees) of the telescope."""
+        return math.degrees(self.telaz_rad)
+
+    @property
     def telaz_peakspeed(self):
         """float: Return the azimuth peak speed (degrees/sec) of the
                   telescope."""
         return math.degrees(self.telaz_peakspeed_rad)
+
+    @property
+    def telrot(self):
+        """float: Return the rotator angle (degrees) of the telescope."""
+        return math.degrees(self.telrot_rad)
 
     @property
     def telrot_peakspeed(self):
