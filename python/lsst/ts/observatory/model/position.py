@@ -31,7 +31,7 @@ class ObservatoryPosition(object):
         az_rad : float
             The azimuth (radians) of the pointing.
         pa_rad : float
-
+            The parallactic angle (radians) of the pointing.
         rot_rad : float
 
         """
@@ -75,6 +75,8 @@ class ObservatoryPosition(object):
 
     @property
     def pa(self):
+        """float: Return the parallactic angle (degrees) of the pointing
+                  position."""
         return math.degrees(self.pa_rad)
 
     @property

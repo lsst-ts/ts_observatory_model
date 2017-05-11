@@ -31,21 +31,21 @@ def read_conf_file(filename):
     has the capability to take parameters as math expressions and lists. String entries in
     list parameters do not need to be surrounded by quotes. An example file is shown below:
 
-    [section]
-    # Floating point parameter
-    var1 = 1.0
-    # String parameter
-    var2 = help
-    # List of strings parameter
-    var3 = [good, to, go]
-    # List of floats parameter
-    var4 = [1, 2, 4]
-    # Boolean parameter
-    var5 = True
-    # Floating point math expression parameter
-    var6 = 375. / 30.
-    # Set of tuples
-    var7 = (test1, 1.0, 30.0), (test2, 4.0, 50.0)
+    |  [section]
+    |  # Floating point parameter
+    |  var1 = 1.0
+    |  # String parameter
+    |  var2 = help
+    |  # List of strings parameter
+    |  var3 = [good, to, go]
+    |  # List of floats parameter
+    |  var4 = [1, 2, 4]
+    |  # Boolean parameter
+    |  var5 = True
+    |  # Floating point math expression parameter
+    |  var6 = 375. / 30.
+    |  # Set of tuples
+    |  var7 = (test1, 1.0, 30.0), (test2, 4.0, 50.0)
 
     Parameters
     ----------

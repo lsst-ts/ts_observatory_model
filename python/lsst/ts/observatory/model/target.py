@@ -268,7 +268,7 @@ class Target(object):
 
         Returns
         -------
-        schedulerTarget.Target
+        :class:`.Target`
         """
         return cls(topic.targetId, topic.fieldId, topic.filter, math.radians(topic.ra),
                    math.radians(topic.dec), math.radians(topic.angle), topic.num_exposures,

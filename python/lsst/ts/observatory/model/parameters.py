@@ -7,7 +7,7 @@ class ObservatoryModelParameters(object):
        observatory.
 
        All angle parameters are stored as radians. Speeds are radians/sec
-       and accelrations are radians/sec^2
+       and accelerations are radians/sec^2
     """
 
     def __init__(self):

@@ -36,7 +36,7 @@ class ObservatoryState(ObservatoryPosition):
         az_rad : float
             The azimuth (radians) of the pointing.
         pa_rad : float
-
+            The parallactic angle (radians) of the pointing.
         rot_rad : float
 
         telalt_rad : float
@@ -203,7 +203,7 @@ class ObservatoryState(ObservatoryPosition):
     def swap_filter(self, filter_to_mount, filter_to_unmount):
         """Perform a filter swap on the internal lists.
 
-        DEPRECATED?
+        UNUSED/DEPRECATED?
 
         Parameters
         ----------
