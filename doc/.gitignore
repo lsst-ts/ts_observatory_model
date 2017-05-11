@@ -1,5 +1,3 @@
 # Sphinx
 _build
 modules.rst
-tables/*.rst
-table_descriptions.rst
