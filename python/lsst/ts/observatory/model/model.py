@@ -40,7 +40,6 @@ class ObservatoryModel(object):
             self.location = location
         self.park_state = ObservatoryState()
         self.current_state = ObservatoryState()
-        self.targetPosition = ObservatoryPosition()
 
         self.dateprofile = DateProfile(0.0, self.location)
 
