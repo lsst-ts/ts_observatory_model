@@ -15,7 +15,7 @@ __all__ = ["ObservatoryModel"]
 TWOPI = 2 * math.pi
 
 class ObservatoryModel(object):
-    """Class for modelling the observatory.
+    """Class for modeling the observatory.
     """
 
     def __init__(self, location=None, log_level=logging.DEBUG):
@@ -23,13 +23,13 @@ class ObservatoryModel(object):
 
         Parameters
         ----------
-        location : :class:`.ObservatoryLocation`, optional
+        location : lsst.ts.dateloc.ObservatoryLocation, optional
             An instance of the observatory location. Default is None,
             but this sets up the LSST as the location.
         log_level : int
             Set the logging level for the class. Default is logging.DEBUG.
         """
-        self.log = logging.getLogger("observatoryModel")
+        self.log = logging.getLogger("ObservatoryModel")
         self.log_level = log_level
 
         self.params = ObservatoryModelParameters()
@@ -99,7 +99,7 @@ class ObservatoryModel(object):
         self.reset()
 
     def configure_from_module(self, conf_file=None):
-        """Configure the observatory model from the module stored
+        """Configure the observatory model from the module stored \
            configuration.
 
         Parameters
@@ -339,6 +339,7 @@ class ObservatoryModel(object):
         Parameters
         ----------
         new_state : :class:`.ObservatoryState`
+            The instance containing the state to update the observatory to.
         """
         if new_state.filter != self.current_state.filter:
             self.filter_changes_list.append(new_state.time)
@@ -391,7 +392,18 @@ class ObservatoryModel(object):
             self.current_state.pa_rad = pa_rad
 
     def get_slew_delay(self, target):
+        """Calculate the slew delay based on the given target.
 
+        Parameters
+        ----------
+        target : :class:`.Target`
+            An instance of a target for slew calculation.
+
+        Returns
+        -------
+        float
+            The total slew delay for the target.
+        """
         if target.filter != self.current_state.filter:
             # check if filter is possible
             if not self.is_filter_change_allowed_for(target.filter):
@@ -424,7 +436,20 @@ class ObservatoryModel(object):
         return self.get_slew_delay_for_state(targetstate, self.current_state, False)
 
     def get_closest_state(self, targetposition, istracking=False):
+        """Find the closest observatory state for the given target position.
 
+        Parameters
+        ----------
+        targetposition : :class:`.ObservatoryPosition`
+            A target position instance.
+        istracking : bool, optional
+            Flag for saying if the observatory is tracking. Default is False.
+
+        Returns
+        -------
+        :class:`.ObservatoryState`
+            The state that is closest to the current observatory state.
+        """
         valid_state = True
 
         if targetposition.alt_rad < self.params.telalt_minpos_rad:
@@ -468,7 +493,7 @@ class ObservatoryModel(object):
                 valid_state = False
         else:
             # if the target rotator angle is unreachable
-            # then sets an arbitrary value (oposite)
+            # then sets an arbitrary value (opposite)
             norm_rot_rad = divmod(targetposition.rot_rad - self.params.telrot_minpos_rad, TWOPI)[1] \
                 + self.params.telrot_minpos_rad
             if norm_rot_rad > self.params.telrot_maxpos_rad:
@@ -491,8 +516,27 @@ class ObservatoryModel(object):
 
         return targetstate
 
-    def get_closest_angle_distance(self, target_rad, current_abs_rad, min_abs_rad=None, max_abs_rad=None):
+    def get_closest_angle_distance(self, target_rad, current_abs_rad,
+                                   min_abs_rad=None, max_abs_rad=None):
+        """Calculate the closest angular distance including handling \
+           cable wrap if necessary.
 
+        Parameters
+        ----------
+        target_rad : float
+            The destination angle (radians).
+        current_abs_rad : float
+            The current angle (radians).
+        min_abs_rad : float, optional
+            The minimum constraint angle (radians).
+        max_abs_rad : float, optional
+            The maximum constraint angle (radians).
+
+        Returns
+        -------
+        tuple(float, float)
+            (accumulated angle in radians, distance angle in radians)
+        """
         # if there are wrap limits, normalizes the target angle
         if min_abs_rad is not None:
             norm_target_rad = divmod(target_rad - min_abs_rad, TWOPI)[1] + min_abs_rad
@@ -527,8 +571,28 @@ class ObservatoryModel(object):
 
         return (final_abs_rad, distance_rad)
 
-    def radecang2position(self, dateprofile, ra_rad, dec_rad, ang_rad, filter):
+    def radecang2position(self, dateprofile, ra_rad, dec_rad, ang_rad, band_filter):
+        """Convert current time, sky location and filter into observatory\
+           position.
 
+        Parameters
+        ----------
+        dateprofile : lsst.ts.dateloc.DateProfile
+            The instance holding the current time information.
+        ra_rad : float
+            The current right ascension (radians).
+        dec_rad : float
+            The current declination (radians).
+        ang_rad : float
+            The current sky angle (radians).
+        band_filter : str
+            The current band filter.
+
+        Returns
+        -------
+        :class:`.ObservatoryPosition`
+            The observatory position information from inputs.
+        """
         (alt_rad, az_rad, pa_rad) = self.radec2altazpa(dateprofile, ra_rad, dec_rad)
 
         position = ObservatoryPosition()
@@ -537,7 +601,7 @@ class ObservatoryModel(object):
         position.ra_rad = ra_rad
         position.dec_rad = dec_rad
         position.ang_rad = ang_rad
-        position.filter = filter
+        position.filter = band_filter
         position.alt_rad = alt_rad
         position.az_rad = az_rad
         position.pa_rad = pa_rad
@@ -546,18 +610,22 @@ class ObservatoryModel(object):
         return position
 
     def radec2altazpa(self, dateprofile, ra_rad, dec_rad):
-        """
-        Converts ra_rad, dec_rad coordinates into alt_rad az_rad for given DATE.
-        inputs:
-               ra_rad:  Right Ascension in radians
-               dec_rad: Declination in radians
-               DATE: Time in seconds since simulation reference (SIMEPOCH)
-        output:
-               (alt_rad, az_rad, pa_rad, HA_HOU)
-               alt_rad: Altitude in radians [-90.0  90.0] 90=>zenith
-               az_rad:  Azimuth in radians [  0.0 360.0] 0=>N 90=>E
-               pa_rad:  Parallactic Angle in radians
-               HA_HOU:  Hour Angle in hours
+        """Converts ra, de coordinates into alt, az for given time.
+
+        Parameters
+        ----------
+        dateprofile : lsst.ts.dateloc.DateProfile
+            Instance containing the time information.
+        ra_rad : float
+            The right ascension in radians
+        dec_rad : float
+            The declination in radians
+
+        Returns
+        -------
+        tuple(float, float, float)
+            (altitude in radians, azimuth in radians, parallactic angle in
+            radians)
         """
         lst_rad = dateprofile.lst_rad
         ha_rad = lst_rad - ra_rad
@@ -568,6 +636,13 @@ class ObservatoryModel(object):
         return (alt_rad, az_rad, pa_rad)
 
     def start_tracking(self, time):
+        """Put observatory into tracking mode.
+
+        Parameters
+        ----------
+        time : float
+            The UTC timestamp.
+        """
         if time < self.current_state.time:
             time = self.current_state.time
         if not self.current_state.tracking:
@@ -575,14 +650,35 @@ class ObservatoryModel(object):
             self.current_state.tracking = True
 
     def stop_tracking(self, time):
+        """Remove observatory from tracking mode.
+
+        Parameters
+        ----------
+        time : float
+            The UTC timestamp.
+        """
         if time < self.current_state.time:
             time = self.current_state.time
         if self.current_state.tracking:
             self.update_state(time)
             self.current_state.tracking = False
 
-    def slew_altaz(self, time, alt_rad, az_rad, rot_rad, filter):
+    def slew_altaz(self, time, alt_rad, az_rad, rot_rad, band_filter):
+        """Slew observatory to the given alt, az location.
 
+        Parameters
+        ----------
+        time : float
+            The UTC timestamp of the request.
+        alt_rad : float
+            The altitude (radians) to slew to.
+        az_rad : float
+            The azimuth (radians) to slew to.
+        rot_rad : float
+            The telescope rotator angle (radians) for the slew.
+        band_filter : str
+            The band filter for the slew.
+        """
         self.update_state(time)
         time = self.current_state.time
 
@@ -592,12 +688,26 @@ class ObservatoryModel(object):
         targetposition.alt_rad = alt_rad
         targetposition.az_rad = az_rad
         targetposition.rot_rad = rot_rad
-        targetposition.filter = filter
+        targetposition.filter = band_filter
 
         self.slew_to_position(targetposition)
 
     def slew_radec(self, time, ra_rad, dec_rad, ang_rad, filter):
+        """Slew observatory to the given ra, dec location.
 
+        Parameters
+        ----------
+        time : float
+            The UTC timestamp of the request.
+        ra_rad : float
+            The right ascension (radians) to slew to.
+        dec_rad : float
+            The declination (radians) to slew to.
+        ang_rad : float
+            The sky angle (radians) for the slew.
+        band_filter : str
+            The band filter for the slew.
+        """
         self.update_state(time)
         time = self.current_state.time
 
@@ -608,12 +718,25 @@ class ObservatoryModel(object):
         self.slew_to_position(targetposition)
 
     def slew(self, target):
+        """Slew the observatory to the given target location.
 
+        Parameters
+        ----------
+        target : :class:`.Target`
+            The instance containing the target information for the slew.
+        """
         self.slew_radec(self.current_state.time,
                         target.ra_rad, target.dec_rad, target.ang_rad, target.filter)
 
     def observe(self, target):
+        """Run the observatory through the observing cadence for the target.
 
+        Parameters
+        ----------
+        target : :class:`.Target`
+            The instance containing the target information for the
+            observation.
+        """
         self.slew(target)
         visit_time = sum(target.exp_times) + \
             target.num_exp * self.params.shuttertime + \
@@ -621,7 +744,18 @@ class ObservatoryModel(object):
         self.update_state(self.current_state.time + visit_time)
 
     def get_deep_drilling_time(self, target):
+        """Get the observing time for a deep drilling target.
 
+        Parameters
+        ----------
+        target : :class:`.Target`
+            The instance containing the target information.
+
+        Returns
+        -------
+        float
+            The total observation time.
+        """
         ddtime = target.dd_exptime + \
             target.dd_exposures * self.params.shuttertime + \
             max(target.dd_exposures - 1, 0) * self.params.readouttime + \
@@ -630,7 +764,8 @@ class ObservatoryModel(object):
         return ddtime
 
     def park(self):
-
+        """Put the observatory into the park state.
+        """
         self.park_state.filter = self.current_state.filter
         slew_delay = self.get_slew_delay_for_state(self.park_state, self.current_state, True)
         self.park_state.time = self.current_state.time + slew_delay
@@ -639,7 +774,13 @@ class ObservatoryModel(object):
         self.park_state.time = 0.0
 
     def swap_filter(self, filter_to_unmount):
+        """Perform a filter swap with the given filter.
 
+        Parameters
+        ----------
+        filter_to_unmount : str
+            The band filter name to unmount.
+        """
         if filter_to_unmount in self.current_state.mountedfilters:
             self.current_state.mountedfilters.remove(filter_to_unmount)
             filter_to_mount = self.current_state.unmountedfilters.pop()
@@ -653,7 +794,13 @@ class ObservatoryModel(object):
                           (filter_to_unmount))
 
     def slew_to_position(self, targetposition):
+        """Slew the observatory to a given position.
 
+        Parameters
+        ----------
+        targetposition : :class:`.ObservatoryPosition`
+            The instance containing the slew position information.
+        """
         targetstate = self.get_closest_state(targetposition)
         targetstate.mountedfilters = self.current_state.mountedfilters
         targetstate.unmountedfilters = self.current_state.unmountedfilters
@@ -665,11 +812,32 @@ class ObservatoryModel(object):
         self.update_state(targetstate.time)
 
     def reset(self):
-
+        """Reset the observatory to the parking state.
+        """
         self.set_state(self.park_state)
 
     def compute_kinematic_delay(self, distance, maxspeed, accel, decel):
+        """Calculate the kinematic delay.
 
+        This function calculates the kinematic delay for the given distance
+        based on a simple second-order function for velocity.
+
+        Parameters
+        ----------
+        distance : float
+            The required distance to move.
+        maxspeed : float
+            The maximum speed for the calculation.
+        accel : float
+            The acceleration for the calculation.
+        decel : float
+            The deceleration for the calculation.
+
+        Returns
+        -------
+        tuple(float, float)
+            (delay time in seconds, peak velocity in radians/sec)
+        """
         d = abs(distance)
 
         vpeak = (2 * d / (1 / accel + 1 / decel)) ** 0.5
@@ -690,7 +858,22 @@ class ObservatoryModel(object):
         return (delay, vpeak * compare(distance, 0))
 
     def get_slew_delay_for_state(self, targetstate, initstate, include_slew_data=False):
+        """Calculate slew delay for target state from current state.
 
+        Parameters
+        ----------
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+        include_slew_data : bool, optional
+            Flag to update lastslew_delays_dict member.
+
+        Returns
+        -------
+        float
+            The slew delay for the target state.
+        """
         last_activity = "exposures"
         slew_delay = self.get_delay_after(last_activity, targetstate, initstate)
 
@@ -710,7 +893,25 @@ class ObservatoryModel(object):
         return slew_delay
 
     def get_delay_after(self, activity, targetstate, initstate):
+        """Calculate slew delay for activity.
 
+        This function calculates the slew delay for a given activity based on
+        the requested target state and the current observatory state.
+
+        Parameters
+        ----------
+        activity : str
+            The name of the activity for slew delay calculation.
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the activity.
+        """
         activity_delay = self.function_get_delay_for[activity](targetstate, initstate)
 
         prereq_list = self.params.prerequisites[activity]
@@ -728,7 +929,24 @@ class ObservatoryModel(object):
         return activity_delay + longest_previous_delay
 
     def get_delay_for_telalt(self, targetstate, initstate):
+        """Calculate slew delay for telalt activity.
 
+        This function calculates the slew delay for the telalt activity
+        based on the requested target state and the current observatory
+        state.
+
+        Parameters
+        ----------
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the telalt activity.
+        """
         distance = targetstate.telalt_rad - initstate.telalt_rad
         maxspeed = self.params.telalt_maxspeed_rad
         accel = self.params.telalt_accel_rad
@@ -740,7 +958,24 @@ class ObservatoryModel(object):
         return delay
 
     def get_delay_for_telaz(self, targetstate, initstate):
+        """Calculate slew delay for telaz activity.
 
+        This function calculates the slew delay for the telaz activity
+        based on the requested target state and the current observatory
+        state.
+
+        Parameters
+        ----------
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the telaz activity.
+        """
         distance = targetstate.telaz_rad - initstate.telaz_rad
         maxspeed = self.params.telaz_maxspeed_rad
         accel = self.params.telaz_accel_rad
@@ -752,7 +987,24 @@ class ObservatoryModel(object):
         return delay
 
     def get_delay_for_telrot(self, targetstate, initstate):
+        """Calculate slew delay for telrot activity.
 
+        This function calculates the slew delay for the telrot activity
+        based on the requested target state and the current observatory
+        state.
+
+        Parameters
+        ----------
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the telrot activity.
+        """
         distance = targetstate.telrot_rad - initstate.telrot_rad
         maxspeed = self.params.telrot_maxspeed_rad
         accel = self.params.telrot_accel_rad
@@ -764,7 +1016,24 @@ class ObservatoryModel(object):
         return delay
 
     def get_delay_for_telsettle(self, targetstate, initstate):
+        """Calculate slew delay for telsettle activity.
 
+        This function calculates the slew delay for the telsettle activity
+        based on the requested target state and the current observatory
+        state.
+
+        Parameters
+        ----------
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the telsettle activity.
+        """
         distance = abs(targetstate.telalt_rad - initstate.telalt_rad) + \
             abs(targetstate.telaz_rad - initstate.telaz_rad)
 
@@ -776,7 +1045,24 @@ class ObservatoryModel(object):
         return delay
 
     def get_delay_for_telopticsopenloop(self, targetstate, initstate):
+        """Calculate slew delay for telopticsopenloop activity.
 
+        This function calculates the slew delay for the telopticsopenloop
+        activity based on the requested target state and the current
+        observatory state.
+
+        Parameters
+        ----------
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the telopticsopenloop activity.
+        """
         distance = abs(targetstate.telalt_rad - initstate.telalt_rad)
 
         if distance > 1e-6:
@@ -787,7 +1073,24 @@ class ObservatoryModel(object):
         return delay
 
     def get_delay_for_telopticsclosedloop(self, targetstate, initstate):
+        """Calculate slew delay for telopticsclosedloop activity.
 
+        This function calculates the slew delay for the telopticsclosedloop
+        activity based on the requested target state and the current
+        observatory state.
+
+        Parameters
+        ----------
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the telopticsclosedloop activity.
+        """
         distance = abs(targetstate.telalt_rad - initstate.telalt_rad)
 
         delay = 0.0
@@ -799,7 +1102,24 @@ class ObservatoryModel(object):
         return delay
 
     def get_delay_for_domalt(self, targetstate, initstate):
+        """Calculate slew delay for domalt activity.
 
+        This function calculates the slew delay for the domalt activity
+        based on the requested target state and the current observatory
+        state.
+
+        Parameters
+        ----------
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the domalt activity.
+        """
         distance = targetstate.domalt_rad - initstate.domalt_rad
         maxspeed = self.params.domalt_maxspeed_rad
         accel = self.params.domalt_accel_rad
@@ -811,7 +1131,24 @@ class ObservatoryModel(object):
         return delay
 
     def get_delay_for_domaz(self, targetstate, initstate):
+        """Calculate slew delay for domaz activity.
 
+        This function calculates the slew delay for the domaz activity
+        based on the requested target state and the current observatory
+        state.
+
+        Parameters
+        ----------
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the domaz activity.
+        """
         distance = targetstate.domaz_rad - initstate.domaz_rad
         maxspeed = self.params.domaz_maxspeed_rad
         accel = self.params.domaz_accel_rad
@@ -823,7 +1160,24 @@ class ObservatoryModel(object):
         return delay
 
     def get_delay_for_domazsettle(self, targetstate, initstate):
+        """Calculate slew delay for domazsettle activity.
 
+        This function calculates the slew delay for the domazsettle activity
+        based on the requested target state and the current observatory
+        state.
+
+        Parameters
+        ----------
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the domazsettle activity.
+        """
         distance = abs(targetstate.domaz_rad - initstate.domaz_rad)
 
         if distance > 1e-6:
@@ -834,7 +1188,18 @@ class ObservatoryModel(object):
         return delay
 
     def is_filter_change_allowed_for(self, targetfilter):
+        """Determine if filter change is allowed given band filter.
 
+        Parameters
+        ----------
+        targetfilter : str
+            The band filter for the target.
+
+        Returns
+        -------
+        bool
+            True is filter change is allowed, else False.
+        """
         if targetfilter in self.current_state.mountedfilters:
             # new filter is mounted
             allowed = self.is_filter_change_allowed()
@@ -843,7 +1208,13 @@ class ObservatoryModel(object):
         return allowed
 
     def is_filter_change_allowed(self):
+        """Determine is filter change is allowed due to constraints.
 
+        Returns
+        -------
+        bool
+            True is filter change is allowed, else False.
+        """
         burst_num = self.params.filter_max_changes_burst_num
         if len(self.filter_changes_list) >= burst_num:
             deltatime = self.current_state.time - self.filter_changes_list[-burst_num]
@@ -867,7 +1238,16 @@ class ObservatoryModel(object):
         return allowed
 
     def get_delta_last_filterchange(self):
+        """Get the time difference for filter changes.
 
+        This function calculates the time difference between the current time
+        and the time of the last filter change.
+
+        Returns
+        -------
+        float
+            The time difference.
+        """
         if len(self.filter_changes_list) > 0:
             delta = self.current_state.time - self.filter_changes_list[-1]
         else:
@@ -876,7 +1256,24 @@ class ObservatoryModel(object):
         return delta
 
     def get_delay_for_filter(self, targetstate, initstate):
+        """Calculate slew delay for filter activity.
 
+        This function calculates the slew delay for the filter activity
+        based on the requested target state and the current observatory
+        state.
+
+        Parameters
+        ----------
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the filter activity.
+        """
         if targetstate.filter != initstate.filter:
             # filter change needed
             delay = self.params.filter_changetime
@@ -886,9 +1283,22 @@ class ObservatoryModel(object):
         return delay
 
     def get_number_filter_changes(self):
+        """The total number of stored filter changes.
+
+        Returns
+        -------
+        int
+        """
         return len(self.filter_changes_list)
 
     def get_delta_filter_burst(self):
+        """The time difference between current time and last filter change \
+           for burst changes.
+
+        Returns
+        -------
+        float
+        """
         burst_num = self.params.filter_max_changes_burst_num
         if len(self.filter_changes_list) >= burst_num:
             deltatime = self.current_state.time - self.filter_changes_list[-burst_num]
@@ -897,6 +1307,13 @@ class ObservatoryModel(object):
         return deltatime
 
     def get_delta_filter_avg(self):
+        """The time difference between current time and last filter change \
+           for average changes.
+
+        Returns
+        -------
+        float
+        """
         avg_num = self.params.filter_max_changes_avg_num
         if len(self.filter_changes_list) >= avg_num:
             deltatime = self.current_state.time - self.filter_changes_list[-avg_num]
@@ -905,29 +1322,63 @@ class ObservatoryModel(object):
         return deltatime
 
     def get_delay_for_readout(self, targetstate, initstate):
+        """Calculate slew delay for readout activity.
 
-        return self.params.readouttime
-
-    def get_delay_for_exposures(self, targetstate, initstate):
-
-        return 0.0
-
-    def altaz2radecpa(self, dateprofile, alt_rad, az_rad):
-        """Converts ALT, AZ coordinates into RA, DEC for the given TIME.
+        This function calculates the slew delay for the readout activity
+        based on the requested target state and the current observatory
+        state.
 
         Parameters
         ----------
-        dateprofile : :class:`.DateProfile`
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the readout activity.
+        """
+        return self.params.readouttime
+
+    def get_delay_for_exposures(self, targetstate, initstate):
+        """Calculate slew delay for exposures activity.
+
+        This function calculates the slew delay for the exposures activity
+        based on the requested target state and the current observatory
+        state.
+
+        Parameters
+        ----------
+        targetstate : :class:`.ObservatoryState`
+            The instance containing the target state.
+        initstate : :class:`.ObservatoryState`
+            The instance containing the current state of the observatory.
+
+        Returns
+        -------
+        float
+            The slew delay for the exposures activity.
+        """
+        return 0.0
+
+    def altaz2radecpa(self, dateprofile, alt_rad, az_rad):
+        """Converts alt, az coordinates into ra, dec for the given time.
+
+        Parameters
+        ----------
+        dateprofile : lsst.ts.dateloc.DateProfile
             Instance containing the time information.
         alt_rad : float
-            Altitude in radians [-90.0deg  90.0deg] 90deg=>zenith
+            The altitude in radians
         az_rad : float
-            Azimuth in radians [0.0deg 360.0deg] 0deg=>N 90deg=>E
+            The azimuth in radians
 
         Returns
         -------
         tuple(float, float)
-            (Right Ascension in radians, Declination in radians)
+            (right ascension in radians, declination in radians)
         """
         lst_rad = dateprofile.lst_rad
 
