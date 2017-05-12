@@ -9,7 +9,7 @@ The main class for use in this package is :py:class:`.ObservatoryModel`. Many of
   from lsst.ts.observatory.model import ObservatoryModel
   obmod = ObservatoryModel()
 
-In order for the model to function correctly, it needs to be configures and updated to a given timestamp. The class provides many functions for configuring the various sub-systems, but most will want to use the stored defaults. The following runs through this procedure. The instance can be printed to show the state of the observatory model.
+In order for the model to function correctly, it needs to be configured and updated to a given timestamp. The class provides many functions for configuring the various sub-systems, but most will want to use the stored defaults. The following runs through this procedure. The instance can be printed to show the state of the observatory model.
 
 .. code-block:: python
 
