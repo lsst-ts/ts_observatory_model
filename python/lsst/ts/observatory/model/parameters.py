@@ -83,8 +83,8 @@ class ObservatoryModelParameters(object):
         else:
             self.filter_max_changes_avg_interval = 0.0
 
-        self.filter_init_mounted_list = confdict["camera"]["filter_mounted"]
-        self.filter_init_unmounted_list = confdict["camera"]["filter_unmounted"]
+        self.filter_init_mounted_list = list(confdict["camera"]["filter_mounted"])
+        self.filter_init_unmounted_list = list(confdict["camera"]["filter_unmounted"])
 
     def configure_dome(self, confdict):
         """Configure the dome related parameters.
@@ -154,7 +154,7 @@ class ObservatoryModelParameters(object):
         """
         for activity in activities:
             key = "prereq_" + activity
-            self.prerequisites[activity] = confdict["slew"][key]
+            self.prerequisites[activity] = list(confdict["slew"][key])
 
     def configure_telescope(self, confdict):
         """Configure the telescope related parameters.
