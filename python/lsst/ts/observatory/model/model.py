@@ -269,7 +269,7 @@ class ObservatoryModel(object):
                      (self.params.optics_cl_delay))
         self.log.log(self.log_level,
                      "configure_optics: optics_cl_altlimit=%s" %
-                     (self.params.optics_cl_altlimit))
+                     ([math.degrees(x) for x in self.params.optics_cl_altlimit]))
 
     def configure_park(self, confdict):
         """Configure the telescope park state parameters.
