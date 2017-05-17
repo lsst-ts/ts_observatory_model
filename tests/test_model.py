@@ -557,3 +557,7 @@ class ObservatoryModelTest(unittest.TestCase):
 
         ddtime = self.model.get_deep_drilling_time(target)
         self.assertEqual(ddtime, 3808.0)
+
+    def test_get_configure_dict(self):
+        cd = ObservatoryModel.get_configure_dict("telescope")
+        self.assertEqual(len(cd), 11)
