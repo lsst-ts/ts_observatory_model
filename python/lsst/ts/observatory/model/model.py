@@ -74,23 +74,18 @@ class ObservatoryModel(object):
         return str(self.current_state)
 
     @classmethod
-    def get_configure_dict(cls, section):
-        """Get the configuration dictionary for a given section.
-
-        Parameters
-        ----------
-        section : str
-            The name for the section to retrieve from the configuration file.
+    def get_configure_dict(cls):
+        """Get the configuration dictionary for the observatory model.
 
         Returns
         -------
         dict
-            The configuration dictionary for the section.
+            The configuration dictionary for the observatory model.
         """
         conf_file = os.path.join(os.path.dirname(__file__),
                                  "observatory_model.conf")
         conf_dict = read_conf_file(conf_file)
-        return conf_dict[section]
+        return conf_dict
 
     def altaz2radecpa(self, dateprofile, alt_rad, az_rad):
         """Converts alt, az coordinates into ra, dec for the given time.

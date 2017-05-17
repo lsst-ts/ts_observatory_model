@@ -560,10 +560,10 @@ class ObservatoryModelTest(unittest.TestCase):
         self.assertEqual(ddtime, 3808.0)
 
     def test_get_configure_dict(self):
-        cd = ObservatoryModel.get_configure_dict("telescope")
-        self.assertEqual(len(cd), 11)
-        cd = ObservatoryModel.get_configure_dict("camera")
-        self.assertEqual(len(cd), 10)
+        cd = ObservatoryModel.get_configure_dict()
+        self.assertEqual(len(cd), 7)
+        self.assertEqual(len(cd["telescope"]), 11)
+        self.assertEqual(len(cd["camera"]), 10)
 
 class MemoryTestClass(lsst.utils.tests.MemoryTestCase):
     pass
