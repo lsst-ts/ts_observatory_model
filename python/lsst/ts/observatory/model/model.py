@@ -1057,7 +1057,9 @@ class ObservatoryModel(object):
         self.lastslew_criticalpath = []
         if include_slew_data:
             for act in self.activities:
-                self.lastslew_delays_dict[act] = self.delay_for[act]
+                dt = self.delay_for[act]
+                if dt > 0.0:
+                    self.lastslew_delays_dict[act] = dt
 
             activity = last_activity
             while activity != "":

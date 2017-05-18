@@ -21,26 +21,13 @@ class ObservatoryModelTest(unittest.TestCase):
 
     def check_delay_and_state(self, model, delays, critical_path, state):
         lastslew_delays_dict = model.lastslew_delays_dict
-        self.assertAlmostEquals(lastslew_delays_dict["telalt"],
-                                delays[0], delta=1e-3)
-        self.assertAlmostEquals(lastslew_delays_dict["telaz"],
-                                delays[1], delta=1e-3)
-        self.assertAlmostEquals(lastslew_delays_dict["telrot"],
-                                delays[2], delta=1e-3)
-        self.assertAlmostEquals(lastslew_delays_dict["telopticsopenloop"],
-                                delays[3], delta=1e-3)
-        self.assertAlmostEquals(lastslew_delays_dict["telopticsclosedloop"],
-                                delays[4], delta=1e-3)
-        self.assertAlmostEquals(lastslew_delays_dict["domalt"],
-                                delays[5], delta=1e-3)
-        self.assertAlmostEquals(lastslew_delays_dict["domaz"],
-                                delays[6], delta=1e-3)
-        self.assertAlmostEquals(lastslew_delays_dict["domazsettle"],
-                                delays[7], delta=1e-3)
-        self.assertAlmostEquals(lastslew_delays_dict["filter"],
-                                delays[8], delta=1e-3)
-        self.assertAlmostEquals(lastslew_delays_dict["readout"],
-                                delays[9], delta=1e-3)
+        for key in lastslew_delays_dict:
+            # This activity was not recorded in truth arrays.
+            if key == "telsettle":
+                continue
+            self.assertAlmostEqual(lastslew_delays_dict[key], delays[key],
+                                   delta=1e-3)
+
         self.assertListEqual(model.lastslew_criticalpath, critical_path)
         self.assertAlmostEquals(model.current_state.telalt_peakspeed,
                                 state[0], delta=1e-3)
@@ -52,6 +39,16 @@ class ObservatoryModelTest(unittest.TestCase):
                                 state[3], delta=1e-3)
         self.assertAlmostEquals(model.current_state.domaz_peakspeed,
                                 state[4], delta=1e-3)
+
+    def make_slewact_dict(self, delays):
+        slewacts = ("telalt", "telaz", "telrot", "telopticsopenloop",
+                    "telopticsclosedloop", "domalt", "domaz", "domazsettle",
+                    "filter", "readout")
+        delay_map = {}
+        for i, slew in enumerate(slewacts):
+            if delays[i] > 0.0:
+                delay_map[slew] = delays[i]
+        return delay_map
 
     def test_init(self):
         temp_model = ObservatoryModel(self.location)
@@ -376,8 +373,8 @@ class ObservatoryModelTest(unittest.TestCase):
                          "telaz=76.495 telrot=63.368 "
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
         self.check_delay_and_state(self.model,
-                                   (8.387, 11.966, 21.641, 7.387, 20.0,
-                                    18.775, 53.174, 1.0, 0.0, 2.0),
+                                   self.make_slewact_dict((8.387, 11.966, 21.641, 7.387, 20.0,
+                                                           18.775, 53.174, 1.0, 0.0, 2.0)),
                                    ['telopticsclosedloop', 'domazsettle',
                                     'domaz'],
                                    (-3.50, 7.00, 3.50, -1.75, 1.50))
@@ -394,8 +391,9 @@ class ObservatoryModelTest(unittest.TestCase):
                          "telaz=76.056 telrot=63.156 "
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
         self.check_delay_and_state(self.model,
-                                   (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                    120.0, 2.0),
+                                   self.make_slewact_dict((0.0, 0.0, 0.0, 0.0,
+                                                           0.0, 0.0, 0.0, 0.0,
+                                                           120.0, 2.0)),
                                    ['filter'],
                                    (0, 0, 0, 0, 0))
 
@@ -411,8 +409,11 @@ class ObservatoryModelTest(unittest.TestCase):
                          "telaz=78.751 telrot=64.172 "
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
         self.check_delay_and_state(self.model,
-                                   (0.683, 1.244, 2.022, 0.117, 0.0, 1.365,
-                                    3.801, 1.0, 0.000, 2.000),
+                                   self.make_slewact_dict((0.683, 1.244,
+                                                           2.022, 0.117,
+                                                           0.0, 1.365,
+                                                           3.801, 1.0,
+                                                           0.000, 2.000)),
                                    ['domazsettle', 'domaz'],
                                    (-1.194, 4.354, 1.011, -0.598, 1.425))
 
@@ -497,8 +498,10 @@ class ObservatoryModelTest(unittest.TestCase):
                          "telaz=76.255 telrot=-0.242 "
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
         self.check_delay_and_state(self.model,
-                                   (8.387, 11.966, 0.0, 7.387, 20.0, 18.775,
-                                    53.174, 1.0, 120.0, 2.0),
+                                   self.make_slewact_dict((8.387, 11.966, 0.0,
+                                                           7.387, 20.0, 18.775,
+                                                           53.174, 1.0, 120.0,
+                                                           2.0)),
                                    ['telopticsclosedloop', 'filter'],
                                    (-3.50, 7.00, 0.0, -1.75, 1.50))
 
@@ -508,8 +511,10 @@ class ObservatoryModelTest(unittest.TestCase):
                          "telaz=0.000 telrot=0.000 "
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
         self.check_delay_and_state(self.model,
-                                   (8.247, 11.894, 0.985, 7.247, 20.0, 18.494,
-                                    52.836, 1.0, 0.0, 2.0),
+                                   self.make_slewact_dict((8.247, 11.894,
+                                                           0.985, 7.247, 20.0,
+                                                           18.494, 52.836,
+                                                           1.0, 0.0, 2.0)),
                                    ['telopticsclosedloop', 'domazsettle',
                                     'domaz'],
                                    (3.50, -7.00, 0.492, 1.75, -1.50))
@@ -526,8 +531,10 @@ class ObservatoryModelTest(unittest.TestCase):
                          "telaz=75.460 telrot=-0.262 "
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
         self.check_delay_and_state(self.model,
-                                   (8.174, 11.855, 0.0, 7.174, 20.0, 18.348,
-                                    52.657, 1.0, 120.0, 2.0),
+                                   self.make_slewact_dict((8.174, 11.855, 0.0,
+                                                           7.174, 20.0, 18.348,
+                                                           52.657, 1.0, 120.0,
+                                                           2.0)),
                                    ['telopticsclosedloop', 'filter'],
                                    (-3.50, 7.00, 0.0, -1.75, 1.50))
 
@@ -537,8 +544,10 @@ class ObservatoryModelTest(unittest.TestCase):
                          "telaz=0.000 telrot=0.000 "
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
         self.check_delay_and_state(self.model,
-                                   (8.034, 11.780, 1.024, 7.034, 20.0, 18.068,
-                                    52.307, 1.0, 0.0, 2.0),
+                                   self.make_slewact_dict((8.034, 11.780,
+                                                           1.024, 7.034, 20.0,
+                                                           18.068, 52.307, 1.0,
+                                                           0.0, 2.0)),
                                    ['telopticsclosedloop', 'domazsettle',
                                     'domaz'],
                                    (3.50, -7.00, 0.512, 1.75, -1.50))
