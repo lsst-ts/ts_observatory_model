@@ -91,7 +91,7 @@ def read_conf_file(filename):
                             try:
                                 value = [float(x) for x in value.split(',')]
                             except ValueError:
-                                value = [x.strip() for x in value.split(',')]
+                                value = [str(x.strip()) for x in value.split(',')]
                             if len(value) == 1:
                                 if value[0] == '':
                                     value = []
@@ -105,7 +105,7 @@ def read_conf_file(filename):
                                     try:
                                         parts_list.append(float(part))
                                     except ValueError:
-                                        parts_list.append(part.strip())
+                                        parts_list.append(str(part.strip()))
                                 val_parts.append(tuple(parts_list))
                             value = val_parts
                     except AttributeError:
