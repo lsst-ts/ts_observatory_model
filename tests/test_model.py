@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import unittest
 
 from lsst.ts.dateloc import ObservatoryLocation
@@ -29,15 +30,16 @@ class ObservatoryModelTest(unittest.TestCase):
                                    delta=1e-3)
 
         self.assertListEqual(model.lastslew_criticalpath, critical_path)
-        self.assertAlmostEquals(model.current_state.telalt_peakspeed,
+
+        self.assertAlmostEqual(model.current_state.telalt_peakspeed,
                                 state[0], delta=1e-3)
-        self.assertAlmostEquals(model.current_state.telaz_peakspeed,
+        self.assertAlmostEqual(model.current_state.telaz_peakspeed,
                                 state[1], delta=1e-3)
-        self.assertAlmostEquals(model.current_state.telrot_peakspeed,
-                                state[2], delta=1e-3)
-        self.assertAlmostEquals(model.current_state.domalt_peakspeed,
+        self.assertAlmostEqual(model.current_state.telrot_peakspeed,
+                                 state[2], delta=1e-3)
+        self.assertAlmostEqual(model.current_state.domalt_peakspeed,
                                 state[3], delta=1e-3)
-        self.assertAlmostEquals(model.current_state.domaz_peakspeed,
+        self.assertAlmostEqual(model.current_state.domaz_peakspeed,
                                 state[4], delta=1e-3)
 
     def make_slewact_dict(self, delays):
@@ -53,7 +55,7 @@ class ObservatoryModelTest(unittest.TestCase):
     def test_init(self):
         temp_model = ObservatoryModel(self.location)
         self.assertIsNotNone(temp_model.log)
-        self.assertAlmostEquals(temp_model.location.longitude_rad, -1.23480, delta=1e6)
+        self.assertAlmostEqual(temp_model.location.longitude_rad, -1.23480, delta=1e6)
         self.assertEqual(temp_model.current_state.telalt_rad, 1.5)
 
     def test_configure(self):
@@ -252,7 +254,7 @@ class ObservatoryModelTest(unittest.TestCase):
         target.filter = "r"
 
         delay = self.model.get_slew_delay(target)
-        self.assertAlmostEquals(delay, 74.174, delta=1e-3)
+        self.assertAlmostEqual(delay, 74.174, delta=1e-3)
 
         self.model.slew(target)
 
@@ -263,7 +265,7 @@ class ObservatoryModelTest(unittest.TestCase):
         target.filter = "g"
 
         delay = self.model.get_slew_delay(target)
-        self.assertAlmostEquals(delay, 120, delta=1e-3)
+        self.assertAlmostEqual(delay, 120, delta=1e-3)
 
         target = Target()
         target.ra_rad = math.radians(50)
@@ -272,15 +274,40 @@ class ObservatoryModelTest(unittest.TestCase):
         target.filter = "r"
 
         delay = self.model.get_slew_delay(target)
-        self.assertAlmostEquals(delay, 22.556, delta=1e-3)
+        self.assertAlmostEqual(delay, 22.556, delta=1e-3)
 
         self.model.slew(target)
         delay = self.model.get_slew_delay(target)
-        self.assertAlmostEquals(delay, 2.0, delta=1e-3)
+        self.assertAlmostEqual(delay, 2.0, delta=1e-3)
 
         target.ang_rad = math.radians(15)
         delay = self.model.get_slew_delay(target)
-        self.assertAlmostEquals(delay, 4.472, delta=1e-3)
+        self.assertAlmostEqual(delay, 4.472, delta=1e-3)
+
+    def test_get_approximateSlewTime(self):
+        self.model.update_state(0)
+        alt = np.array([self.model.current_state.telalt_rad])
+        az = np.array([self.model.current_state.telaz_rad])
+        f = self.model.current_state.filter
+        # Check that slew time is == readout time for no motion
+        slewtime = self.model.get_approximateSlewTime(alt, az, f)
+        self.assertEqual(slewtime, 2.0)
+        # Check that slew time is == filter change time for filter change
+        newfilter = 'u'
+        if f == newfilter:
+            newfilter = 'g'
+        slewtime = self.model.get_approximateSlewTime(alt, az, newfilter)
+        self.assertEqual(slewtime, 120.0)
+        # Check that get nan when attempting to slew out of bounds
+        alt = np.array([np.radians(90), np.radians(0), np.radians(-20)], float)
+        az = np.zeros(len(alt), float)
+        slewtime = self.model.get_approximateSlewTime(alt, az, f)
+        self.assertTrue(np.all(slewtime < 0))
+        # Check that we can calculate slew times with an array.
+        alt = np.radians(np.arange(0, 90, 1))
+        az = np.radians(np.arange(0, 180, 2))
+        slewtime = self.model.get_approximateSlewTime(alt, az, f)
+        self.assertEqual(len(slewtime), len(alt))
 
     def test_get_slew_delay_followsky_false(self):
         self.model.update_state(0)
@@ -297,7 +324,7 @@ class ObservatoryModelTest(unittest.TestCase):
         target.filter = "r"
 
         delay = self.model.get_slew_delay(target)
-        self.assertAlmostEquals(delay, 74.174, delta=1e-3)
+        self.assertAlmostEqual(delay, 74.174, delta=1e-3)
 
         self.model.slew(target)
 
@@ -308,7 +335,7 @@ class ObservatoryModelTest(unittest.TestCase):
         target.filter = "g"
 
         delay = self.model.get_slew_delay(target)
-        self.assertAlmostEquals(delay, 120, delta=1e-3)
+        self.assertAlmostEqual(delay, 120, delta=1e-3)
 
         target = Target()
         target.ra_rad = math.radians(50)
@@ -317,15 +344,15 @@ class ObservatoryModelTest(unittest.TestCase):
         target.filter = "r"
 
         delay = self.model.get_slew_delay(target)
-        self.assertAlmostEquals(delay, 22.556, delta=1e-3)
+        self.assertAlmostEqual(delay, 22.556, delta=1e-3)
 
         self.model.slew(target)
         delay = self.model.get_slew_delay(target)
-        self.assertAlmostEquals(delay, 2.0, delta=1e-3)
+        self.assertAlmostEqual(delay, 2.0, delta=1e-3)
 
         target.ang_rad = math.radians(15)
         delay = self.model.get_slew_delay(target)
-        self.assertAlmostEquals(delay, 2.0, delta=1e-3)
+        self.assertAlmostEqual(delay, 2.0, delta=1e-3)
 
     def test_slew(self):
         self.model.update_state(0)

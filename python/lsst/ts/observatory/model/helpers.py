@@ -5,24 +5,8 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
-__all__ = ["compare", "read_conf_file"]
+__all__ = ["read_conf_file"]
 
-def compare(x, y):
-    """Replacement for Python 2 cmp function.
-
-    Parameters
-    ----------
-    x : number
-        First value to check.
-    y : number
-        Second value to check.
-
-    Returns
-    -------
-    int
-        1 if x > y, -1 if x < y and 0 if x == y
-    """
-    return ((x > y) - (x < y))
 
 def read_conf_file(filename):
     """Read the new type of configuration file.
