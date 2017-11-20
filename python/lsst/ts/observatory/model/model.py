@@ -183,7 +183,7 @@ class ObservatoryModel(object):
                             2 * vmax / accel + (distance - dm) / vmax)
         return slewTime
 
-    def get_approximateSlewTime(self, alt_rad, az_rad, goal_filter, laxDome=False):
+    def get_approximate_slew_delay(self, alt_rad, az_rad, goal_filter, lax_dome=False):
         """Calculates ``slew'' time to a series of alt/az/filter positions.
         Assumptions (currently):
             assumes rotator is not moved (no rotator included)
@@ -196,13 +196,13 @@ class ObservatoryModel(object):
 
         Parameters
         ----------
-        alt2 : np.ndarray
+        alt_rad : np.ndarray
             The altitude of the destination pointing in RADIANS.
-        az2 : np.ndarray
+        az_rad : np.ndarray
             The azimuth of the destination pointing in RADIANS.
-        filter2 : np.ndarray
+        goal_filter : np.ndarray
             The filter to be used in the destination observation.
-        laxDome : boolean
+        lax_dome : boolean, default False
             If True, allow the dome to creep, model a dome slit, and don't
             require the dome to settle in azimuth. If False, adhere to the way
             SOCS calculates slew times (as of June 21 2017).
@@ -234,7 +234,7 @@ class ObservatoryModel(object):
         totTelTime = np.maximum(self.params.readouttime, totTelTime)
 
         # now compute dome slew time
-        if laxDome:
+        if lax_dome:
             totDomeTime = np.zeros(len(alt_rad), float)
             # model dome creep, dome slit, and no azimuth settle
             # if we can fit both exposures in the dome slit, do so
