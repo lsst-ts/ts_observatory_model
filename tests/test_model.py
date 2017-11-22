@@ -290,23 +290,23 @@ class ObservatoryModelTest(unittest.TestCase):
         az = np.array([self.model.current_state.telaz_rad])
         f = self.model.current_state.filter
         # Check that slew time is == readout time for no motion
-        slewtime = self.model.get_approximateSlewTime(alt, az, f)
+        slewtime = self.model.get_approximate_slew_delay(alt, az, f)
         self.assertEqual(slewtime, 2.0)
         # Check that slew time is == filter change time for filter change
         newfilter = 'u'
         if f == newfilter:
             newfilter = 'g'
-        slewtime = self.model.get_approximateSlewTime(alt, az, newfilter)
+        slewtime = self.model.get_approximate_slew_delay(alt, az, newfilter)
         self.assertEqual(slewtime, 120.0)
         # Check that get nan when attempting to slew out of bounds
         alt = np.array([np.radians(90), np.radians(0), np.radians(-20)], float)
         az = np.zeros(len(alt), float)
-        slewtime = self.model.get_approximateSlewTime(alt, az, f)
+        slewtime = self.model.get_approximate_slew_delay(alt, az, f)
         self.assertTrue(np.all(slewtime < 0))
         # Check that we can calculate slew times with an array.
         alt = np.radians(np.arange(0, 90, 1))
         az = np.radians(np.arange(0, 180, 2))
-        slewtime = self.model.get_approximateSlewTime(alt, az, f)
+        slewtime = self.model.get_approximate_slew_delay(alt, az, f)
         self.assertEqual(len(slewtime), len(alt))
 
     def test_get_slew_delay_followsky_false(self):

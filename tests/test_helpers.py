@@ -1,7 +1,7 @@
 import unittest
 import os
 
-from lsst.ts.observatory.model import compare, read_conf_file
+from lsst.ts.observatory.model import read_conf_file
 import lsst.utils.tests
 
 class HelpersTest(unittest.TestCase):
