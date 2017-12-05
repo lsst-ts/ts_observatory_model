@@ -82,6 +82,11 @@ class ObservatoryModelParameters(object):
                 self.filter_max_changes_avg_time / self.filter_max_changes_avg_num
         else:
             self.filter_max_changes_avg_interval = 0.0
+        try:
+            # This is probably not available in most config dicts currently.
+            self.camera_fov = confdict["camera"]["field_of_view"]
+        except KeyError:
+            self.camera_fov = math.radians(3.5)
 
         self.filter_init_mounted_list = list(confdict["camera"]["filter_mounted"])
         self.filter_init_unmounted_list = list(confdict["camera"]["filter_unmounted"])

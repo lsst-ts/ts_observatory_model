@@ -1,20 +1,15 @@
 import unittest
 import os
 
-from lsst.ts.observatory.model import compare, read_conf_file
+from lsst.ts.observatory.model import read_conf_file
 import lsst.utils.tests
 
 class HelpersTest(unittest.TestCase):
 
-    def test_compare(self):
-        self.assertEqual(compare(4, 3), 1)
-        self.assertEqual(compare(3, 4), -1)
-        self.assertEqual(compare(4, 4), 0)
-
     def test_read_conf_file(self):
         file_path = os.path.join(os.path.dirname(__file__), "dummy.conf")
         conf_dict = read_conf_file(file_path)
-        self.assertEquals(len(conf_dict), 3)
+        self.assertEqual(len(conf_dict), 3)
         self.assertEqual(conf_dict["section1"]["par1"], 15.0)
         self.assertEqual(conf_dict["section1"]["par2"], "test")
         self.assertListEqual(conf_dict["section1"]["par3"],

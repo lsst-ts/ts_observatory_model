@@ -1,5 +1,6 @@
 import logging
 import math
+import numpy as np
 import os
 
 import palpy as pal
@@ -8,11 +9,11 @@ from lsst.ts.dateloc import DateProfile, ObservatoryLocation
 from lsst.ts.observatory.model import ObservatoryModelParameters
 from lsst.ts.observatory.model import ObservatoryPosition
 from lsst.ts.observatory.model import ObservatoryState
-from lsst.ts.observatory.model import compare, read_conf_file
+from lsst.ts.observatory.model import read_conf_file
 
 __all__ = ["ObservatoryModel"]
 
-TWOPI = 2 * math.pi
+TWOPI = 2 * np.pi
 
 class ObservatoryModel(object):
     """Class for modeling the observatory.
@@ -150,8 +151,154 @@ class ObservatoryModel(object):
 
             delay = t1 + t2 + t3
             vpeak = maxspeed
+        if (distance < 0):
+            vpeak = -1 * vpeak
+        return (delay, vpeak)
 
-        return (delay, vpeak * compare(distance, 0))
+    def _uamSlewTime(self, distance, vmax, accel):
+        """Compute slew time delay assuming uniform acceleration (for any component).
+        If you accelerate uniformly to vmax, then slow down uniformly to zero, distance traveled is
+        d  = vmax**2 / accel
+        To travel distance d while accelerating/decelerating at rate a, time required is t = 2 * sqrt(d / a)
+        If hit vmax, then time to acceleration to/from vmax is 2*vmax/a and distance in those
+        steps is vmax**2/a. The remaining distance is (d - vmax^2/a) and time needed is (d - vmax^2/a)/vmax
+
+        This method accepts arrays of distance, and assumes acceleration == deceleration.
+
+        Parameters
+        ----------
+        distance : numpy.ndarray
+            Distances to travel. Must be positive value.
+        vmax : float
+            Max velocity
+        accel : float
+            Acceleration (and deceleration)
+
+        Returns
+        -------
+        numpy.ndarray
+        """
+        dm = vmax**2 / accel
+        slewTime = np.where(distance < dm, 2 * np.sqrt(distance / accel),
+                            2 * vmax / accel + (distance - dm) / vmax)
+        return slewTime
+
+    def get_approximate_slew_delay(self, alt_rad, az_rad, goal_filter, lax_dome=False):
+        """Calculates ``slew'' time to a series of alt/az/filter positions.
+        Assumptions (currently):
+            assumes rotator is not moved (no rotator included)
+            assumes  we never max out cable wrap-around!
+
+        Calculates the ``slew'' time necessary to get from current state
+        to alt2/az2/filter2. The time returned is actually the time between
+        the end of an exposure at current location and the beginning of an exposure
+        at alt2/az2, since it includes readout time in the ``slew'' time.
+
+        Parameters
+        ----------
+        alt_rad : np.ndarray
+            The altitude of the destination pointing in RADIANS.
+        az_rad : np.ndarray
+            The azimuth of the destination pointing in RADIANS.
+        goal_filter : np.ndarray
+            The filter to be used in the destination observation.
+        lax_dome : boolean, default False
+            If True, allow the dome to creep, model a dome slit, and don't
+            require the dome to settle in azimuth. If False, adhere to the way
+            SOCS calculates slew times (as of June 21 2017).
+
+        Returns
+        -------
+        np.ndarray
+            The number of seconds between the two specified exposures.
+        """
+        # FYI this takes on the order of 285 us to calculate slew times to 2293 pts (.12us per pointing)
+        # Find the distances to all the other fields.
+        deltaAlt = np.abs(alt_rad - self.current_state.alt_rad)
+        deltaAz = np.abs(az_rad - self.current_state.az_rad)
+        deltaAz = np.minimum(deltaAz, np.abs(deltaAz - 2 * np.pi))
+
+        # Calculate how long the telescope will take to slew to this position.
+        telAltSlewTime = self._uamSlewTime(deltaAlt, self.params.telalt_maxspeed_rad,
+                                           self.params.telalt_accel_rad )
+        telAzSlewTime = self._uamSlewTime(deltaAz, self.params.telaz_maxspeed_rad,
+                                          self.params.telaz_accel_rad)
+        totTelTime = np.maximum(telAltSlewTime, telAzSlewTime)
+        # Time for open loop optics correction
+        olTime = deltaAlt / self.params.optics_ol_slope
+        totTelTime += olTime
+        # Add time for telescope settle.
+        settleAndOL = np.where(totTelTime > 0)
+        totTelTime[settleAndOL] += np.maximum(0, self.params.mount_settletime - olTime[settleAndOL])
+        # And readout puts a floor on tel time
+        totTelTime = np.maximum(self.params.readouttime, totTelTime)
+
+        # now compute dome slew time
+        if lax_dome:
+            totDomeTime = np.zeros(len(alt_rad), float)
+            # model dome creep, dome slit, and no azimuth settle
+            # if we can fit both exposures in the dome slit, do so
+            sameDome = np.where(deltaAlt ** 2 + deltaAz ** 2 < self.params.camera_fov ** 2)
+
+            # else, we take the minimum time from two options:
+            # 1. assume we line up alt in the center of the dome slit so we
+            #    minimize distance we have to travel in azimuth.
+            # 2. line up az in the center of the slit
+            # also assume:
+            # * that we start out going maxspeed for both alt and az
+            # * that we only just barely have to get the new field in the
+            #   dome slit in one direction, but that we have to center the
+            #   field in the other (which depends which of the two options used)
+            # * that we don't have to slow down until after the shutter
+            #   starts opening
+            domDeltaAlt = deltaAlt
+            # on each side, we can start out with the dome shifted away from
+            # the center of the field by an amount domSlitRadius - fovRadius
+            domSlitDiam = self.params.camera_fov / 2.0
+            domDeltaAz = deltaAz - 2 * (domSlitDiam / 2 - self.params.camera_fov / 2)
+            domAltSlewTime = domDeltaAlt / self.params.domalt_maxspeed_rad
+            domAzSlewTime = domDeltaAz / self.params.domaz_maxspeed_rad
+            totDomTime1 = np.maximum(domAltSlewTime, domAzSlewTime)
+
+            domDeltaAlt = deltaAlt - 2 * (domSlitDiam / 2 - self.params.camera_fov / 2)
+            domDeltaAz = deltaAz
+            domAltSlewTime = domDeltaAlt / self.params.domalt_maxspeed_rad
+            domAzSlewTime = domDeltaAz / self.params.domaz_maxspeed_rad
+            totDomTime2 = np.maximum(domAltSlewTime, domAzSlewTime)
+
+            totDomTime = np.minimum(totDomTime1, totDomTime2)
+            totDomTime[sameDome] = 0
+
+        else:
+            # the above models a dome slit and dome creep. However, it appears that
+            # SOCS requires the dome to slew exactly to each field and settle in az
+            domAltSlewTime = self._uamSlewTime(deltaAlt, self.params.domalt_maxspeed_rad,
+                                               self.params.domalt_accel_rad)
+            domAzSlewTime = self._uamSlewTime(deltaAz, self.params.domaz_maxspeed_rad,
+                                              self.params.domaz_accel_rad)
+            # Dome takes 1 second to settle in az
+            domAzSlewTime = np.where(domAzSlewTime > 0,
+                                     domAzSlewTime + self.params.domaz_settletime,
+                                     domAzSlewTime)
+            totDomTime = np.maximum(domAltSlewTime, domAzSlewTime)
+        # Find the max of the above for slew time.
+        slewTime = np.maximum(totTelTime, totDomTime)
+        # include filter change time if necessary
+        filterChange = np.where(goal_filter != self.current_state.filter)
+        slewTime[filterChange] = np.maximum(slewTime[filterChange],
+                                            self.params.filter_changetime)
+        # Add closed loop optics correction
+        # Find the limit where we must add the delay
+        cl_limit = self.params.optics_cl_altlimit[1]
+        cl_delay = self.params.optics_cl_delay[1]
+        closeLoop = np.where(deltaAlt >= cl_limit)
+        slewTime[closeLoop] += cl_delay
+
+        # Mask min/max altitude limits so slewtime = np.nan
+        outsideLimits = np.where((alt_rad > self.params.telalt_maxpos_rad) |
+                                 (alt_rad < self.params.telalt_minpos_rad))
+        slewTime[outsideLimits] = -1
+        return slewTime
 
     def configure(self, confdict):
         """Configure the observatory model.
