@@ -1136,7 +1136,7 @@ class ObservatoryModel(object):
         """
         return len(self.filter_changes_list)
 
-    def get_slew_delay(self, target):
+    def get_slew_delay(self, target, use_telrot=False):
         """Calculate the slew delay based on the given target.
 
         Parameters
@@ -1159,7 +1159,7 @@ class ObservatoryModel(object):
                                                 target.dec_rad,
                                                 target.ang_rad,
                                                 target.filter)
-        if not self.params.rotator_followsky:
+        if not self.params.rotator_followsky and use_telrot:
             #override rotator position with current telrot
             targetposition.rot_rad = self.current_state.telrot_rad
 
@@ -1267,16 +1267,16 @@ class ObservatoryModel(object):
             allowed = False
         return allowed
 
-    def observe(self, target):
+    def observe(self, target, use_telrot=False):
         """Run the observatory through the observing cadence for the target.
 
         Parameters
         ----------
         target : :class:`.Target`
             The instance containing the target information for the
-            observation.
+            observation.asdasddasd
         """
-        self.slew(target)
+        self.slew(target, use_telrot)
         visit_time = sum(target.exp_times) + \
             target.num_exp * self.params.shuttertime + \
             max(target.num_exp - 1, 0) * self.params.readouttime
@@ -1375,7 +1375,7 @@ class ObservatoryModel(object):
         self.current_state.set(new_state)
         self.dateprofile.update(new_state.time)
 
-    def slew(self, target):
+    def slew(self, target, use_telrot=False):
         """Slew the observatory to the given target location.
 
         Parameters
@@ -1384,7 +1384,7 @@ class ObservatoryModel(object):
             The instance containing the target information for the slew.
         """
         self.slew_radec(self.current_state.time,
-                        target.ra_rad, target.dec_rad, target.ang_rad, target.filter)
+                        target.ra_rad, target.dec_rad, target.ang_rad, target.filter, use_telrot)
 
     def slew_altaz(self, time, alt_rad, az_rad, rot_rad, band_filter):
         """Slew observatory to the given alt, az location.
@@ -1415,7 +1415,7 @@ class ObservatoryModel(object):
 
         self.slew_to_position(targetposition)
 
-    def slew_radec(self, time, ra_rad, dec_rad, ang_rad, filter):
+    def slew_radec(self, time, ra_rad, dec_rad, ang_rad, filter, use_telrot=False):
         """Slew observatory to the given ra, dec location.
 
         Parameters
@@ -1435,7 +1435,7 @@ class ObservatoryModel(object):
         time = self.current_state.time
 
         targetposition = self.radecang2position(self.dateprofile, ra_rad, dec_rad, ang_rad, filter)
-        if not self.params.rotator_followsky:
+        if not self.params.rotator_followsky and use_telrot:
             targetposition.rot_rad = self.current_state.telrot_rad
 
         self.slew_to_position(targetposition)
