@@ -628,17 +628,56 @@ class ObservatoryModel(object):
         -------
         :class:`.ObservatoryState`
             The state that is closest to the current observatory state.
+
+        Binary schema
+        -------------
+        The binary schema used to determine the state of a proposed target. A
+        value of 1 indicates that is it failing. A value of 0 indicates that the
+        state is passing.
+        ___  ___  ___  ___  ___  ___
+         |    |    |    |    |    |
+        rot  rot  az   az   alt  alt
+        max  min  max  min  max  min
+
+        For example, if a proposed target exceeds the rotators maximum value,
+        and is below the minimum azimuth we would have a binary value of;
+
+         0    1    0    1    0    0
+
+        If the target passed, then no limitations would occur;
+
+         0    0    0    0    0    0
         """
+
         valid_state = True
+        fail_record = self.current_state.fail_record
+        self.current_state.fail_state = 0
 
         if targetposition.alt_rad < self.params.telalt_minpos_rad:
             telalt_rad = self.params.telalt_minpos_rad
             domalt_rad = self.params.telalt_minpos_rad
             valid_state = False
+
+            if "telalt_minpos_rad" in fail_record:
+                fail_record["telalt_minpos_rad"] += 1
+            else:
+                fail_record["telalt_minpos_rad"] = 1
+
+            self.current_state.fail_state = self.current_state.fail_state | \
+                                            self.current_state.fail_value_table["altEmin"]
+
         elif targetposition.alt_rad > self.params.telalt_maxpos_rad:
             telalt_rad = self.params.telalt_maxpos_rad
             domalt_rad = self.params.telalt_maxpos_rad
             valid_state = False
+            if "telalt_maxpos_rad" in fail_record:
+                fail_record["telalt_maxpos_rad"] += 1
+            else:
+                fail_record["telalt_maxpos_rad"] = 1
+
+            self.current_state.fail_state = self.current_state.fail_state | \
+                                            self.current_state.fail_value_table["altEmax"]
+
         else:
             telalt_rad = targetposition.alt_rad
             domalt_rad = targetposition.alt_rad
@@ -649,9 +688,25 @@ class ObservatoryModel(object):
             if telaz_rad < self.params.telaz_minpos_rad:
                 telaz_rad = self.params.telaz_minpos_rad
                 valid_state = False
+                if "telaz_minpos_rad" in fail_record:
+                    fail_record["telaz_minpos_rad"] += 1
+                else:
+                    fail_record["telaz_minpos_rad"] = 1
+
+                self.current_state.fail_state = self.current_state.fail_state | \
+                                                self.current_state.fail_value_table["azEmin"]
+
             elif telaz_rad > self.params.telaz_maxpos_rad:
                 telaz_rad = self.params.telaz_maxpos_rad
                 valid_state = False
+                if "telaz_maxpos_rad" in fail_record:
+                    fail_record["telaz_maxpos_rad"] += 1
+                else:
+                    fail_record["telaz_maxpos_rad"] = 1
+
+                self.current_state.fail_state = self.current_state.fail_state | \
+                                                self.current_state.fail_value_table["azEmax"]
+
         else:
             (telaz_rad, delta) = self.get_closest_angle_distance(targetposition.az_rad,
                                                                  self.current_state.telaz_rad,
@@ -667,9 +722,24 @@ class ObservatoryModel(object):
             if telrot_rad < self.params.telrot_minpos_rad:
                 telrot_rad = self.params.telrot_minpos_rad
                 valid_state = False
+                if "telrot_minpos_rad" in fail_record:
+                    fail_record["telrot_minpos_rad"] += 1
+                else:
+                    fail_record["telrot_minpos_rad"] = 1
+
+                self.current_state.fail_state = self.current_state.fail_state | \
+                                                self.current_state.fail_value_table["rotEmin"]
+
             elif telrot_rad > self.params.telrot_maxpos_rad:
                 telrot_rad = self.params.telrot_maxpos_rad
                 valid_state = False
+                if "telrot_maxpos_rad" in fail_record:
+                    fail_record["telrot_maxpos_rad"] += 1
+                else:
+                    fail_record["telrot_maxpos_rad"] = 1
+
+                self.current_state.fail_state = self.current_state.fail_state | \
+                                                self.current_state.fail_value_table["rotEmax"]
         else:
             # if the target rotator angle is unreachable
             # then sets an arbitrary value (opposite)
@@ -692,6 +762,8 @@ class ObservatoryModel(object):
         targetstate.domaz_rad = domaz_rad
         if istracking:
             targetstate.tracking = valid_state
+
+        self.current_state.fail_record = fail_record
 
         return targetstate
 

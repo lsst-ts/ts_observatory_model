@@ -53,6 +53,17 @@ class ObservatoryState(ObservatoryPosition):
             The list of band filters currently mounted for the given state.
         unmountedfilters : list[str]
             The list of band filters currently unmounted for the given state.
+        fail_record : dict[str:int]
+            A dictionary of string keys that represent reason of failure, and
+            and integer to record the count of that failure.
+        fail_state : int
+            A unique integer to define the type of target failure that occured.
+        fail_value_table : dict[str:int]
+            Table used to calculate the fail state.
+            ___  ___  ___  ___  ___  ___
+             |    |    |    |    |    |
+            rot  rot  az   az   alt  alt
+            min  max  max  min  max  min
         """
         ObservatoryPosition.__init__(self, time, ra_rad, dec_rad, ang_rad,
                                      band_filter, tracking, alt_rad, az_rad,
@@ -70,6 +81,11 @@ class ObservatoryState(ObservatoryPosition):
         self.domaz_peakspeed_rad = 0
         self.mountedfilters = list(mountedfilters)
         self.unmountedfilters = list(unmountedfilters)
+        self.fail_record = {}
+        self.fail_state = 0
+        self.fail_value_table = {"altEmax" : 1, "altEmin" : 2,
+                                 "azEmax" : 4, "azEmin" : 8,
+                                 "rotEmax" : 16, "rotEmin" : 32}
 
     def __str__(self):
         """str: The string representation of the instance."""
