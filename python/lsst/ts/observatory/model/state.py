@@ -83,9 +83,9 @@ class ObservatoryState(ObservatoryPosition):
         self.unmountedfilters = list(unmountedfilters)
         self.fail_record = {}
         self.fail_state = 0
-        self.fail_value_table = {"altEmax" : 1, "altEmin" : 2,
-                                 "azEmax" : 4, "azEmin" : 8,
-                                 "rotEmax" : 16, "rotEmin" : 32}
+        self.fail_value_table = {"altEmax": 1, "altEmin": 2,
+                                 "azEmax": 4, "azEmin" : 8,
+                                 "rotEmax": 16, "rotEmin": 32, "filter": 64}
 
     def __str__(self):
         """str: The string representation of the instance."""
