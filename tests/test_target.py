@@ -96,7 +96,7 @@ class TargetTest(unittest.TestCase):
         topic.fieldId = 2000
         topic.filter = 'z'
         topic.ra = 274.279376
-        topic.dec = -14.441534
+        topic.decl = -14.441534
         topic.angle = 45.0
         topic.num_exposures = 3
         topic.exposure_times = [5.0, 10.0, 5.0]
@@ -105,7 +105,7 @@ class TargetTest(unittest.TestCase):
         self.assertEqual(target.fieldid, topic.fieldId)
         self.assertEqual(target.filter, topic.filter)
         self.assertEqual(target.ra, topic.ra)
-        self.assertAlmostEqual(target.dec, topic.dec, delta=1e-7)
+        self.assertAlmostEqual(target.dec, topic.decl, delta=1e-7)
         self.assertEqual(target.num_exp, topic.num_exposures)
         self.assertListEqual(target.exp_times, topic.exposure_times)
 
