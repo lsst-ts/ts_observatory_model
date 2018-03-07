@@ -413,6 +413,9 @@ class ObservatoryModel(object):
                      "configure_dome: domalt_decel=%.3f" %
                      (math.degrees(self.params.domalt_decel_rad)))
         self.log.log(self.log_level,
+                     "configure_dome: domalt_freerange=%.3f" %
+                     (math.degrees(self.params.domalt_free_range)))
+        self.log.log(self.log_level,
                      "configure_dome: domaz_maxspeed=%.3f" %
                      (math.degrees(self.params.domaz_maxspeed_rad)))
         self.log.log(self.log_level,
@@ -421,6 +424,9 @@ class ObservatoryModel(object):
         self.log.log(self.log_level,
                      "configure_dome: domaz_decel=%.3f" %
                      (math.degrees(self.params.domaz_decel_rad)))
+        self.log.log(self.log_level,
+                     "configure_dome: domaz_freerange=%.3f" %
+                     (math.degrees(self.params.domaz_free_range)))
         self.log.log(self.log_level,
                      "configure_dome: domaz_settletime=%.3f" %
                      (self.params.domaz_settletime))
