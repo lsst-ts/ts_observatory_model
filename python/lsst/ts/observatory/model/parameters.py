@@ -37,10 +37,12 @@ class ObservatoryModelParameters(object):
         self.domalt_maxspeed_rad = 0.0
         self.domalt_accel_rad = 0.0
         self.domalt_decel_rad = 0.0
+        self.domalt_free_range = 0.0
         self.domaz_maxspeed_rad = 0.0
         self.domaz_accel_rad = 0.0
         self.domaz_decel_rad = 0.0
         self.domaz_settletime = 0.0
+        self.domaz_free_range = 0.0
 
         self.optics_ol_slope = 0.0
         self.optics_cl_delay = []

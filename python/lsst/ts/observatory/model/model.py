@@ -113,11 +113,20 @@ class ObservatoryModel(object):
 
         return (ra_rad, dec_rad, pa_rad)
 
-    def compute_kinematic_delay(self, distance, maxspeed, accel, decel):
+    @staticmethod
+    def compute_kinematic_delay(distance, maxspeed, accel, decel, free_range=0.):
         """Calculate the kinematic delay.
 
         This function calculates the kinematic delay for the given distance
-        based on a simple second-order function for velocity.
+        based on a simple second-order function for velocity plus an additional
+        optional free range. The model considers that the free range is used for crawling
+        such that:
+
+            1 - If the distance is less than the free_range, than the delay is zero.
+            2 - If the distance is larger than the free_range, than the initial and final speed
+                are equal to that possible to achieve after accelerating/decelerating for the free_range
+                distance.
+
 
         Parameters
         ----------
@@ -129,6 +138,8 @@ class ObservatoryModel(object):
             The acceleration for the calculation.
         decel : float
             The deceleration for the calculation.
+        free_range : float
+            The free range in which the kinematic model returns zero delay.
 
         Returns
         -------
@@ -136,24 +147,41 @@ class ObservatoryModel(object):
             (delay time in seconds, peak velocity in radians/sec)
         """
         d = abs(distance)
+        vpeak_free_range = (2 * free_range / (1 / accel + 1 / decel)) ** 0.5
+        if vpeak_free_range > maxspeed:
+            vpeak_free_range = maxspeed
+
+        if free_range > d:
+            return 0., vpeak_free_range
 
         vpeak = (2 * d / (1 / accel + 1 / decel)) ** 0.5
-        if vpeak <= maxspeed:
-            delay = vpeak / accel + vpeak / decel
-        else:
-            d1 = 0.5 * (maxspeed * maxspeed) / accel
-            d3 = 0.5 * (maxspeed * maxspeed) / decel
-            d2 = d - d1 - d3
 
-            t1 = maxspeed / accel
-            t3 = maxspeed / decel
+        if vpeak <= maxspeed:
+            delay = (vpeak - vpeak_free_range) * (1. / accel + 1. / decel)
+        else:
+            d1 = 0.5 * (maxspeed * maxspeed) / accel - free_range * accel / (accel + decel)
+            d3 = 0.5 * (maxspeed * maxspeed) / decel - free_range * decel / (accel + decel)
+
+            if d1 < 0.:
+                # This means it is possible to ramp up to max speed in less than the free range
+                d1 = 0.
+            if d3 < 0.:
+                # This means it is possible to break down to zero in less than the free range
+                d3 = 0.
+
+            d2 = d - d1 - d3 - free_range
+
+            t1 = (maxspeed - vpeak_free_range) / accel
+            t3 = (maxspeed - vpeak_free_range) / decel
             t2 = d2 / maxspeed
 
             delay = t1 + t2 + t3
             vpeak = maxspeed
-        if (distance < 0):
-            vpeak = -1 * vpeak
-        return (delay, vpeak)
+
+        if distance < 0.:
+            vpeak *= -1.
+
+        return delay, vpeak
 
     def _uamSlewTime(self, distance, vmax, accel):
         """Compute slew time delay assuming uniform acceleration (for any component).
@@ -846,8 +874,9 @@ class ObservatoryModel(object):
         maxspeed = self.params.domalt_maxspeed_rad
         accel = self.params.domalt_accel_rad
         decel = self.params.domalt_decel_rad
+        free_range = self.params.domalt_free_range
 
-        (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel)
+        (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel, free_range)
         targetstate.domalt_peakspeed_rad = peakspeed
 
         return delay
@@ -875,8 +904,9 @@ class ObservatoryModel(object):
         maxspeed = self.params.domaz_maxspeed_rad
         accel = self.params.domaz_accel_rad
         decel = self.params.domaz_decel_rad
+        free_range = self.params.domaz_free_range
 
-        (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel)
+        (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel, free_range)
         targetstate.domaz_peakspeed_rad = peakspeed
 
         return delay
