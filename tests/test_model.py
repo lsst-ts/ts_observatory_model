@@ -385,6 +385,36 @@ class ObservatoryModelTest(unittest.TestCase):
                          "telaz=76.056 telrot=63.156 "
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
 
+    def test_domecrawl(self):
+        self.model.update_state(0)
+        self.assertEqual(str(self.model.current_state), "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
+                         "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
+                         "telaz=0.000 telrot=0.000 "
+                         "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
+
+        target = Target()
+        target.ra_rad = math.radians(60)
+        target.dec_rad = math.radians(-20)
+        target.ang_rad = math.radians(0)
+        target.filter = "r"
+
+        delay_nocrawl = self.model.get_slew_delay(target)
+
+        self.model.params.domaz_free_range = np.radians(4.0)
+
+        delay_crawl = self.model.get_slew_delay(target)
+
+        self.assertTrue( delay_crawl < delay_nocrawl)
+
+        self.model.slew(target)
+        self.assertEqual(str(self.model.current_state), "t=69.5 ra=60.000 dec=-20.000 ang=243.495 "
+                                                        "filter=r track=True alt=60.886 az=76.513 pa=243.377 "
+                                                        "rot=359.882 telaz=76.513 telrot=-0.118 "
+                                                        "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
+
+        self.model.params.domaz_free_range = 0.
+
+
     def test_slewdata(self):
         self.model.update_state(0)
 
