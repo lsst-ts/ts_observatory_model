@@ -271,5 +271,5 @@ class Target(object):
         :class:`.Target`
         """
         return cls(topic.targetId, topic.fieldId, topic.filter, math.radians(topic.ra),
-                   math.radians(topic.dec), math.radians(topic.angle), topic.num_exposures,
+                   math.radians(topic.decl), math.radians(topic.angle), topic.num_exposures,
                    topic.exposure_times)
