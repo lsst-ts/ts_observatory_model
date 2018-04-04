@@ -37,10 +37,12 @@ class ObservatoryModelParameters(object):
         self.domalt_maxspeed_rad = 0.0
         self.domalt_accel_rad = 0.0
         self.domalt_decel_rad = 0.0
+        self.domalt_free_range = 0.0
         self.domaz_maxspeed_rad = 0.0
         self.domaz_accel_rad = 0.0
         self.domaz_decel_rad = 0.0
         self.domaz_settletime = 0.0
+        self.domaz_free_range = 0.0
 
         self.optics_ol_slope = 0.0
         self.optics_cl_delay = []
@@ -105,9 +107,11 @@ class ObservatoryModelParameters(object):
         self.domalt_maxspeed_rad = math.radians(confdict["dome"]["altitude_maxspeed"])
         self.domalt_accel_rad = math.radians(confdict["dome"]["altitude_accel"])
         self.domalt_decel_rad = math.radians(confdict["dome"]["altitude_decel"])
+        self.domalt_free_range = math.radians(confdict["dome"]["altitude_freerange"])
         self.domaz_maxspeed_rad = math.radians(confdict["dome"]["azimuth_maxspeed"])
         self.domaz_accel_rad = math.radians(confdict["dome"]["azimuth_accel"])
         self.domaz_decel_rad = math.radians(confdict["dome"]["azimuth_decel"])
+        self.domaz_free_range = math.radians(confdict["dome"]["azimuth_freerange"])
         self.domaz_settletime = confdict["dome"]["settle_time"]
 
     def configure_optics(self, confdict):
