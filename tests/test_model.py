@@ -253,7 +253,7 @@ class ObservatoryModelTest(unittest.TestCase):
         target.ang_rad = math.radians(0)
         target.filter = "r"
 
-        delay = self.model.get_slew_delay(target)
+        delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 74.174, delta=1e-3)
 
         self.model.slew(target)
@@ -264,7 +264,7 @@ class ObservatoryModelTest(unittest.TestCase):
         target.ang_rad = math.radians(0)
         target.filter = "g"
 
-        delay = self.model.get_slew_delay(target)
+        delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 120, delta=1e-3)
 
         target = Target()
@@ -273,15 +273,15 @@ class ObservatoryModelTest(unittest.TestCase):
         target.ang_rad = math.radians(10)
         target.filter = "r"
 
-        delay = self.model.get_slew_delay(target)
+        delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 22.556, delta=1e-3)
 
         self.model.slew(target)
-        delay = self.model.get_slew_delay(target)
+        delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 2.0, delta=1e-3)
 
         target.ang_rad = math.radians(15)
-        delay = self.model.get_slew_delay(target)
+        delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 4.472, delta=1e-3)
 
     def test_get_approximateSlewTime(self):
@@ -323,7 +323,7 @@ class ObservatoryModelTest(unittest.TestCase):
         target.ang_rad = math.radians(0)
         target.filter = "r"
 
-        delay = self.model.get_slew_delay(target)
+        delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 74.174, delta=1e-3)
 
         self.model.slew(target)
@@ -334,7 +334,7 @@ class ObservatoryModelTest(unittest.TestCase):
         target.ang_rad = math.radians(0)
         target.filter = "g"
 
-        delay = self.model.get_slew_delay(target)
+        delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 120, delta=1e-3)
 
         target = Target()
@@ -343,15 +343,15 @@ class ObservatoryModelTest(unittest.TestCase):
         target.ang_rad = math.radians(10)
         target.filter = "r"
 
-        delay = self.model.get_slew_delay(target)
+        delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 22.556, delta=1e-3)
 
         self.model.slew(target)
-        delay = self.model.get_slew_delay(target)
+        delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 2.0, delta=1e-3)
 
         target.ang_rad = math.radians(15)
-        delay = self.model.get_slew_delay(target)
+        delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 2.0, delta=1e-3)
 
     def test_slew(self):
