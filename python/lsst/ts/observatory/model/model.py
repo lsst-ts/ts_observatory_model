@@ -1257,10 +1257,11 @@ class ObservatoryModel(object):
         float
             The total slew delay for the target.
         """
+
         if target.filter != self.current_state.filter:
             # check if filter is possible
             if not self.is_filter_change_allowed_for(target.filter):
-                return -1.0
+                return -1.0, self.current_state.fail_value_table["filter"]
 
         targetposition = self.radecang2position(self.dateprofile,
                                                 target.ra_rad,
@@ -1273,9 +1274,9 @@ class ObservatoryModel(object):
 
         # check if altitude is possible
         if targetposition.alt_rad < self.params.telalt_minpos_rad:
-            return -1.0
+            return -1.0, self.current_state.fail_value_table["altEmin"]
         if targetposition.alt_rad > self.params.telalt_maxpos_rad:
-            return -1.0
+            return -1.0, self.current_state.fail_value_table["altEmax"]
 
         targetstate = self.get_closest_state(targetposition)
         target.ang_rad = targetstate.ang_rad
@@ -1286,7 +1287,7 @@ class ObservatoryModel(object):
         target.telaz_rad = targetstate.telaz_rad
         target.telrot_rad = targetstate.telrot_rad
 
-        return self.get_slew_delay_for_state(targetstate, self.current_state, False)
+        return self.get_slew_delay_for_state(targetstate, self.current_state, False), 0
 
     def get_slew_delay_for_state(self, targetstate, initstate, include_slew_data=False):
         """Calculate slew delay for target state from current state.
