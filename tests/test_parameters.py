@@ -92,9 +92,11 @@ class ObservatoryModelParametersTest(unittest.TestCase):
                 "altitude_maxspeed": 6.0,
                 "altitude_accel": 1.5,
                 "altitude_decel": 1.5,
+                "altitude_freerange": 0.,
                 "azimuth_maxspeed": 4.0,
                 "azimuth_accel": 0.5,
                 "azimuth_decel": 0.5,
+                "azimuth_freerange": 0.,
                 "settle_time": 3.0
             }
         }
