@@ -246,10 +246,25 @@ class ObservatoryModel(object):
         deltaAz = np.abs(az_rad - self.current_state.az_rad)
         deltaAz = np.minimum(deltaAz, np.abs(deltaAz - 2 * np.pi))
 
-        # Calculate how long the telescope will take to slew to this position.
+        # Calculate how long the telescope will take to slew to this position with cable wrap on azimuth
+        current_abs_rad = self.current_state.telaz_rad
+        max_abs_rad = self.params.telaz_maxpos_rad
+        min_abs_rad = self.params.telaz_minpos_rad
+
+        norm_az_rad = np.divmod(az_rad - min_abs_rad, 2. * np.pi)[1] + min_abs_rad
+        distance_rad = divmod(norm_az_rad - current_abs_rad, 2. * np.pi)[1]
+        get_shorter = np.where(distance_rad > np.pi)
+        distance_rad[get_shorter] -= TWOPI
+        accum_abs_rad = current_abs_rad + distance_rad
+
+        mask_max = np.where(accum_abs_rad > max_abs_rad)
+        distance_rad[mask_max] -= TWOPI
+        mask_min = np.where(accum_abs_rad < min_abs_rad)
+        distance_rad[mask_min] += TWOPI
+
         telAltSlewTime = self._uamSlewTime(deltaAlt, self.params.telalt_maxspeed_rad,
                                            self.params.telalt_accel_rad )
-        telAzSlewTime = self._uamSlewTime(deltaAz, self.params.telaz_maxspeed_rad,
+        telAzSlewTime = self._uamSlewTime(np.abs(distance_rad), self.params.telaz_maxspeed_rad,
                                           self.params.telaz_accel_rad)
         totTelTime = np.maximum(telAltSlewTime, telAzSlewTime)
         # Time for open loop optics correction
