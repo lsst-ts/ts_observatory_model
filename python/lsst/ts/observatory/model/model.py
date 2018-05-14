@@ -247,7 +247,7 @@ class ObservatoryModel(object):
         deltaAz = np.minimum(deltaAz, np.abs(deltaAz - 2 * np.pi))
 
         # Calculate how long the telescope will take to slew to this position with cable wrap on azimuth
-        current_abs_rad = self.current_state.telaz_rad
+        current_abs_rad = self.current_state.az_rad
         max_abs_rad = self.params.telaz_maxpos_rad
         min_abs_rad = self.params.telaz_minpos_rad
 
