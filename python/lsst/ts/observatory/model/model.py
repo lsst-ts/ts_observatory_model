@@ -103,7 +103,7 @@ class ObservatoryModel(object):
         Returns
         -------
         tuple(float, float, float)
-            (right ascension in radians, declination in radians)
+            (right ascension in radians, declination in radians, parallactic angle in radians)
         """
         lst_rad = dateprofile.lst_rad
 
