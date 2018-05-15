@@ -88,7 +88,7 @@ class ObservatoryModel(object):
         conf_dict = read_conf_file(conf_file)
         return conf_dict
 
-    def altaz2radecpa(self, dateprofile, alt_rad, az_rad):
+    def altaz2radecpa(self, dateprofile, alt_rad, az_rad):Converts alt, az coordinates into ra, dec for the given time.
         """Converts alt, az coordinates into ra, dec for the given time.
 
         Parameters
@@ -102,7 +102,7 @@ class ObservatoryModel(object):
 
         Returns
         -------
-        tuple(float, float)
+        tuple(float, float, float)
             (right ascension in radians, declination in radians)
         """
         lst_rad = dateprofile.lst_rad
