@@ -88,7 +88,7 @@ class ObservatoryModel(object):
         conf_dict = read_conf_file(conf_file)
         return conf_dict
 
-    def altaz2radecpa(self, dateprofile, alt_rad, az_rad):Converts alt, az coordinates into ra, dec for the given time.
+    def altaz2radecpa(self, dateprofile, alt_rad, az_rad):
         """Converts alt, az coordinates into ra, dec for the given time.
 
         Parameters
