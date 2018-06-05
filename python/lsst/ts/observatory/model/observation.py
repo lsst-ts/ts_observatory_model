@@ -71,6 +71,7 @@ class Observation(object):
         self.sun_ra = 0
         self.sun_dec = 0
         self.solar_elong = 0
+        self.slewTime = 0
 
 
         #previously, we'd been using the Target class as a standin for Observation
@@ -140,31 +141,26 @@ class Observation(object):
     def __str__(self):
         """str: The string representation of the instance."""
         return ("targetid=%d field=%d filter=%s exp_times=%s ra=%.3f "
-                "dec=%.3f ang=%.3f alt=%.3f az=%.3f rot=%.3f "
-                "telalt=%.3f telaz=%.3f telrot=%.3f "
+                "dec=%.3f ang=%.3f alt=%.3f az=%.3f "
+                "observationid=%d "
                 "time=%.1f airmass=%.3f brightness=%.3f "
                 "cloud=%.2f seeing=%.2f "
                 "visits=%i progress=%.2f%% "
                 "seqid=%i ssname=%s groupid=%i groupix=%i "
-                "firstdd=%s ddvisits=%i "
-                "need=%.3f bonus=%.3f value=%.3f propboost=%.3f "
-                "propid=%s need=%s bonus=%s value=%s propboost=%s "
-                "slewtime=%.3f cost=%.3f rank=%.3f" %
+                "propid=%s "
+                "slewTime=%.3f" %
                 (self.targetid, self.fieldid, self.filter,
                  str(self.exp_times),
                  self.ra, self.dec, self.ang,
-                 self.alt, self.az, self.rot,
-                 self.telalt, self.telaz, self.telrot,
+                 self.alt, self.az,
+                 self.observationid,
                  self.time, self.airmass, self.sky_brightness,
                  self.cloud, self.seeing,
                  self.visits, 100 * self.progress,
                  self.sequenceid, self.subsequencename,
                  self.groupid, self.groupix,
-                 self.is_dd_firstvisit, self.remaining_dd_visits,
-                 self.need, self.bonus, self.value, self.propboost,
-                 self.propid_list, numpy.round(self.need_list, 3), numpy.round(self.bonus_list, 3),
-                 numpy.round(self.value_list, 3), numpy.round(self.propboost_list, 3),
-                 self.slewtime, self.cost, self.rank))
+                 self.propid_list,
+                 self.slewTime))
 
     @property
     def alt(self):
@@ -229,68 +225,99 @@ class Observation(object):
         self.ang_rad = target.ang_rad
 
     def get_copy(self):
-        """:class:`.Target`: Get copy of the instance."""
-        newtarget = Target()
-        newtarget.targetid = self.targetid
-        newtarget.fieldid = self.fieldid
-        newtarget.filter = self.filter
-        newtarget.ra_rad = self.ra_rad
-        newtarget.dec_rad = self.dec_rad
-        newtarget.ang_rad = self.ang_rad
-        newtarget.num_exp = self.num_exp
-        newtarget.exp_times = list(self.exp_times)
-        newtarget.time = self.time
-        newtarget.airmass = self.airmass
-        newtarget.sky_brightness = self.sky_brightness
-        newtarget.cloud = self.cloud
-        newtarget.seeing = self.seeing
-        newtarget.propid = self.propid
-        newtarget.need = self.need
-        newtarget.bonus = self.bonus
-        newtarget.value = self.value
-        newtarget.goal = self.goal
-        newtarget.visits = self.visits
-        newtarget.progress = self.progress
+        """:class:`.Observation`: Get copy of the instance."""
+        newobservation = Observation()
+        newobservation.observationid = self.observationid
+        newobservation.observation_start_time = self.observation_start_time
+        newobservation.observation_start_mjd = self.observation_start_mjd 
+        newobservation.observation_start_lst = self.observation_start_lst
+        newobservation.night = self.night
+        newobservation.targetid = self.targetid
+        newobservation.fieldid = self.fieldid
+        newobservation.groupid = self.groupid
+        newobservation.filter = self.filter
+        newobservation.num_props = self.num_props
+        newobservation.propid_list = self.propid_list
+        newobservation.ra_rad = self.ra_rad
+        newobservation.dec_rad = self.dec_rad
+        newobservation.ang_rad = self.ang_rad
+        newobservation.alt_rad = self.alt_rad
+        newobservation.az_rad = self.az_rad
+        newobservation.num_exp = self.num_exp 
+        newobservation.exp_times = self.exp_times
+        newobservation.visit_time = self.visit_time
+        newobservation.sky_brightness = self.sky_brightness
+        newobservation.airmass = self.airmass
+        newobservation.cloud = self.cloud
+        newobservation.seeing_fwhm_500 = self.seeing_fwhm_500
+        newobservation.seeing_fwhm_geom = self.seeing_fwhm_geom
+        newobservation.seeing_fwhm_eff = self.seeing_fwhm_eff
+        newobservation.five_sigma_depth = self.five_sigma_depth
+        newobservation.moon_ra = self.moon_ra
+        newobservation.moon_dec = self.moon_dec
+        newobservation.moon_alt = self.moon_alt
+        newobservation.moon_az = self.moon_az
+        newobservation.moon_phase = self.moon_phase
+        newobservation.moon_distance = self.moon_distance
+        newobservation.sun_alt = self.sun_alt
+        newobservation.sun_az = self.sun_az
+        newobservation.sun_ra = self.sun_ra
+        newobservation.sun_dec = self.sun_dec
+        newobservation.solar_elong = self.solar_elong
+        newobservation.slewTime = self.slewTime
 
-        newtarget.sequenceid = self.sequenceid
-        newtarget.subsequencename = self.subsequencename
-        newtarget.groupid = self.groupid
-        newtarget.groupix = self.groupix
-        newtarget.is_deep_drilling = self.is_deep_drilling
-        newtarget.is_dd_firstvisit = self.is_dd_firstvisit
-        newtarget.remaining_dd_visits = self.remaining_dd_visits
-        newtarget.dd_exposures = self.dd_exposures
-        newtarget.dd_filterchanges = self.dd_filterchanges
-        newtarget.dd_exptime = self.dd_exptime
+        
+        #everything below this is legacy fields from Target, that don't belong in Observation. 
+        #we should get rid of these if leaving them out doesn't break anything...
+        weNeedThis = False
+        if weNeedThis:
+            newobservation.rot_rad = self.rot_rad
+            newobservation.telalt_rad = self.telalt_rad
+            newobservation.telaz_rad = self.telaz_rad
+            newobservation.telrot_rad = self.telrot_rad
+            newobservation.propboost = self.propboost
+            newobservation.slewtime = self.slewtime
+            newobservation.cost = self.cost
+            newobservation.rank = self.rank
+            newobservation.num_props = self.num_props
+            newobservation.propid_list = list(self.propid_list)
+            newobservation.need_list = list(self.need_list)
+            newobservation.bonus_list = list(self.bonus_list)
+            newobservation.value_list = list(self.value_list)
+            newobservation.propboost_list = list(self.propboost_list)
+            newobservation.sequenceid_list = list(self.sequenceid_list)
+            newobservation.subsequencename_list = list(self.subsequencename_list)
+            newobservation.groupid_list = list(self.groupid_list)
+            newobservation.groupix_list = list(self.groupix_list)
+            newobservation.is_deep_drilling_list = list(self.is_deep_drilling_list)
+            newobservation.is_dd_firstvisit_list = list(self.is_dd_firstvisit_list)
+            newobservation.remaining_dd_visits_list = list(self.remaining_dd_visits_list)
+            newobservation.dd_exposures_list = list(self.dd_exposures_list)
+            newobservation.dd_filterchanges_list = list(self.dd_filterchanges_list)
+            newobservation.dd_exptime_list = list(self.dd_exptime_list)
 
-        newtarget.alt_rad = self.alt_rad
-        newtarget.az_rad = self.az_rad
-        newtarget.rot_rad = self.rot_rad
-        newtarget.telalt_rad = self.telalt_rad
-        newtarget.telaz_rad = self.telaz_rad
-        newtarget.telrot_rad = self.telrot_rad
-        newtarget.propboost = self.propboost
-        newtarget.slewtime = self.slewtime
-        newtarget.cost = self.cost
-        newtarget.rank = self.rank
-        newtarget.num_props = self.num_props
-        newtarget.propid_list = list(self.propid_list)
-        newtarget.need_list = list(self.need_list)
-        newtarget.bonus_list = list(self.bonus_list)
-        newtarget.value_list = list(self.value_list)
-        newtarget.propboost_list = list(self.propboost_list)
-        newtarget.sequenceid_list = list(self.sequenceid_list)
-        newtarget.subsequencename_list = list(self.subsequencename_list)
-        newtarget.groupid_list = list(self.groupid_list)
-        newtarget.groupix_list = list(self.groupix_list)
-        newtarget.is_deep_drilling_list = list(self.is_deep_drilling_list)
-        newtarget.is_dd_firstvisit_list = list(self.is_dd_firstvisit_list)
-        newtarget.remaining_dd_visits_list = list(self.remaining_dd_visits_list)
-        newtarget.dd_exposures_list = list(self.dd_exposures_list)
-        newtarget.dd_filterchanges_list = list(self.dd_filterchanges_list)
-        newtarget.dd_exptime_list = list(self.dd_exptime_list)
+            #legacy stuff
+            newobservation.time = self.time
+            newobservation.seeing = self.seeing
+            newobservation.propid = self.propid
+            newobservation.need = self.need
+            newobservation.bonus = self.bonus
+            newobservation.value = self.value
+            newobservation.goal = self.goal
+            newobservation.visits = self.visits
+            newobservation.progress = self.progress
 
-        return newtarget
+            newobservation.sequenceid = self.sequenceid
+            newobservation.subsequencename = self.subsequencename
+            newobservation.groupix = self.groupix
+            newobservation.is_deep_drilling = self.is_deep_drilling
+            newobservation.is_dd_firstvisit = self.is_dd_firstvisit
+            newobservation.remaining_dd_visits = self.remaining_dd_visits
+            newobservation.dd_exposures = self.dd_exposures
+            newobservation.dd_filterchanges = self.dd_filterchanges
+            newobservation.dd_exptime = self.dd_exptime
+
+        return newobservation
 
     @classmethod
     def from_topic(cls, topic):
