@@ -87,21 +87,21 @@ class TargetTest(unittest.TestCase):
         self.assertEqual(target2.fieldid, 2142)
 
     def test_creation_from_topic(self):
-        topic = collections.namedtuple('topic', ['targetId', 'fieldId',
-                                                 'filter', 'ra', 'dec',
-                                                 'angle',
+        topic = collections.namedtuple('topic', ['target_id', 'fieldId',
+                                                 'filter', 'ra', 'decl',
+                                                 'sky_angle',
                                                  'num_exposures',
                                                  'exposure_times'])
-        topic.targetId = 1
-        topic.fieldId = 2000
+        topic.target_id = 1
+        topic.fieldId = -1
         topic.filter = 'z'
         topic.ra = 274.279376
         topic.decl = -14.441534
-        topic.angle = 45.0
+        topic.sky_angle = 45.0
         topic.num_exposures = 3
         topic.exposure_times = [5.0, 10.0, 5.0]
         target = Target.from_topic(topic)
-        self.assertEqual(target.targetid, topic.targetId)
+        self.assertEqual(target.targetid, topic.target_id)
         self.assertEqual(target.fieldid, topic.fieldId)
         self.assertEqual(target.filter, topic.filter)
         self.assertEqual(target.ra, topic.ra)
