@@ -1394,7 +1394,7 @@ class ObservatoryModel(object):
     def park(self):
         """Put the observatory into the park state.
         """
-        self.park_state.filter = self.current_state.filter
+        #self.park_state.filter = self.current_state.filter
         slew_delay = self.get_slew_delay_for_state(self.park_state, self.current_state, True)
         self.park_state.time = self.current_state.time + slew_delay
         self.current_state.set(self.park_state)
