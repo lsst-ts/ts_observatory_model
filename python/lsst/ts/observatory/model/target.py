@@ -102,6 +102,8 @@ class Target(object):
         # stamped at observation
         self.last_visit_time = 0.0
 
+        self.note = ''
+
     def __str__(self):
         """str: The string representation of the instance."""
         return ("targetid=%d field=%d filter=%s exp_times=%s ra=%.3f "
@@ -114,7 +116,7 @@ class Target(object):
                 "firstdd=%s ddvisits=%i "
                 "need=%.3f bonus=%.3f value=%.3f propboost=%.3f "
                 "propid=%s need=%s bonus=%s value=%s propboost=%s "
-                "slewtime=%.3f cost=%.3f rank=%.3f" %
+                "slewtime=%.3f cost=%.3f rank=%.3f note=%s" %
                 (self.targetid, self.fieldid, self.filter,
                  str(self.exp_times),
                  self.ra, self.dec, self.ang,
@@ -129,7 +131,7 @@ class Target(object):
                  self.need, self.bonus, self.value, self.propboost,
                  self.propid_list, numpy.round(self.need_list, 3), numpy.round(self.bonus_list, 3),
                  numpy.round(self.value_list, 3), numpy.round(self.propboost_list, 3),
-                 self.slewtime, self.cost, self.rank))
+                 self.slewtime, self.cost, self.rank, self.note))
 
     @property
     def alt(self):
@@ -254,6 +256,8 @@ class Target(object):
         newtarget.dd_exposures_list = list(self.dd_exposures_list)
         newtarget.dd_filterchanges_list = list(self.dd_filterchanges_list)
         newtarget.dd_exptime_list = list(self.dd_exptime_list)
+
+        newtarget.note = self.note
 
         return newtarget
 
