@@ -402,6 +402,6 @@ class Target(object):
         -------
         :class:`.Target`
         """
-        return cls(topic.target_id, -1, topic.filter, math.radians(topic.ra),
-                   math.radians(topic.decl), math.radians(topic.sky_angle), topic.num_exposures,
-                   topic.exposure_times)
+        return cls(topic.targetId, -1, topic.filter, math.radians(topic.ra),
+                   math.radians(topic.decl), math.radians(topic.skyAngle), topic.numExposures,
+                   topic.exposureTimes)
