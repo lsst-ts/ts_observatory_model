@@ -1,5 +1,6 @@
 import math
 import numpy
+import copy
 
 __all__ = ["Target"]
 
@@ -40,6 +41,7 @@ class Target(object):
         self.ang_rad = ang_rad
         self.num_exp = num_exp
         self.exp_times = list(exp_times)
+        self._exp_time = None  # total exposure time
 
         # conditions
         self.time = 0.0
@@ -102,6 +104,8 @@ class Target(object):
         # stamped at observation
         self.last_visit_time = 0.0
 
+        self.note = ''
+
     def __str__(self):
         """str: The string representation of the instance."""
         return ("targetid=%d field=%d filter=%s exp_times=%s ra=%.3f "
@@ -114,7 +118,7 @@ class Target(object):
                 "firstdd=%s ddvisits=%i "
                 "need=%.3f bonus=%.3f value=%.3f propboost=%.3f "
                 "propid=%s need=%s bonus=%s value=%s propboost=%s "
-                "slewtime=%.3f cost=%.3f rank=%.3f" %
+                "slewtime=%.3f cost=%.3f rank=%.3f note=%s" %
                 (self.targetid, self.fieldid, self.filter,
                  str(self.exp_times),
                  self.ra, self.dec, self.ang,
@@ -129,52 +133,178 @@ class Target(object):
                  self.need, self.bonus, self.value, self.propboost,
                  self.propid_list, numpy.round(self.need_list, 3), numpy.round(self.bonus_list, 3),
                  numpy.round(self.value_list, 3), numpy.round(self.propboost_list, 3),
-                 self.slewtime, self.cost, self.rank))
+                 self.slewtime, self.cost, self.rank, self.note))
 
     @property
     def alt(self):
         """float: The altitude (degrees) of the target."""
         return math.degrees(self.alt_rad)
 
+    @alt.setter
+    def alt(self, alt):
+        """
+        Set altitude given in degrees
+
+        Parameters
+        ----------
+         alt: float (degrees)
+        """
+        self.alt_rad = math.radians(alt)
+
     @property
     def ang(self):
         """float: The sky angle (degrees) of the target."""
         return math.degrees(self.ang_rad)
+
+    @ang.setter
+    def ang(self, ang):
+        """
+        Set camera rotation angle given in degrees
+
+        Parameters
+        ----------
+         ang: float (degrees)
+        """
+        self.ang_rad = math.radians(ang)
 
     @property
     def az(self):
         """float: The azimuth (degrees) of the target."""
         return math.degrees(self.az_rad)
 
+    @az.setter
+    def az(self, az):
+        """
+        Set camera rotation angle given in degrees
+
+        Parameters
+        ----------
+         az: float (degrees)
+        """
+        self.az_rad = math.radians(az)
+
     @property
     def dec(self):
         """float: The declination (degrees) of the target."""
         return math.degrees(self.dec_rad)
+
+    @dec.setter
+    def dec(self, dec):
+        """
+        Set declination given in degrees
+
+        Parameters
+        ----------
+         dec: float (degrees)
+        """
+        self.dec_rad = math.radians(dec)
 
     @property
     def ra(self):
         """float: The right ascension (degrees) of the target."""
         return math.degrees(self.ra_rad)
 
+    @ra.setter
+    def ra(self, ra):
+        """
+        Set right ascension given in degrees
+
+        Parameters
+        ----------
+         ra: float (degrees)
+        """
+        self.ra_rad = math.radians(ra)
+
     @property
     def rot(self):
         """float: The rotator angle (degrees) of the target."""
         return math.degrees(self.rot_rad)
+
+    @ang.setter
+    def rot(self, rot):
+        """
+        Set camera rotation angle given in degrees
+
+        Parameters
+        ----------
+         rot: float (degrees)
+        """
+        self.rot_rad = math.radians(rot)
 
     @property
     def telalt(self):
         """float: The telescope altitude (degrees) for the target."""
         return math.degrees(self.telalt_rad)
 
+    @telalt.setter
+    def telalt(self, telalt):
+        """
+        Set camera rotation angle given in degrees
+
+        Parameters
+        ----------
+         telalt: float (degrees)
+        """
+        self.telalt_rad = math.radians(telalt)
+
     @property
     def telaz(self):
         """float: The telescope azimuth (degrees) for the target."""
         return math.degrees(self.telaz_rad)
 
+    @telaz.setter
+    def telaz(self, telaz):
+        """
+        Set camera rotation angle given in degrees
+
+        Parameters
+        ----------
+         telaz: float (degrees)
+        """
+        self.telaz_rad = math.radians(telaz)
+
     @property
     def telrot(self):
         """float: The telescope rotator angle (degrees) for the target."""
         return math.degrees(self.telrot_rad)
+
+    @telrot.setter
+    def telrot(self, telrot):
+        """
+        Set camera rotation angle given in degrees
+
+        Parameters
+        ----------
+         telrot: float (degrees)
+        """
+        self.telrot_rad = math.radians(telrot)
+
+    @property
+    def exp_time(self):
+        """
+
+        Returns
+        -------
+        exp_time: float: The total exposure time in seconds.
+        """
+        if self._exp_time is None:
+            return sum(self.exp_times)
+        else:
+            self._exp_time
+
+    @exp_time.setter
+    def exp_time(self, exp_time):
+        """
+
+        Parameters
+        ----------
+        exp_time: float: The total exposure time in seconds.
+
+        Returns
+        -------
+        None
+        """
+        self._exp_time = exp_time
 
     def copy_driver_state(self, target):
         """Copy driver state from another target.
@@ -254,6 +384,8 @@ class Target(object):
         newtarget.dd_exposures_list = list(self.dd_exposures_list)
         newtarget.dd_filterchanges_list = list(self.dd_filterchanges_list)
         newtarget.dd_exptime_list = list(self.dd_exptime_list)
+
+        newtarget.note = self.note
 
         return newtarget
 
