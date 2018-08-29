@@ -1,7 +1,10 @@
 import math
 from lsst.ts.observatory.model import Target
+import logging
 
 __all__ = ["Observation"]
+
+logger = logging.getLogger(__name__)
 
 class Observation(Target):
     """
@@ -52,6 +55,8 @@ class Observation(Target):
         self.seeing_fwhm_eff = 0.
         self.seeing_fwhm_geom = 0.
         self.visit_time = 0.
+        self.moon_alt = 0.
+        self.sun_alt = 0.
 
     @classmethod
     def from_topic(cls, topic):
@@ -69,3 +74,24 @@ class Observation(Target):
         return cls(topic.targetId, topic.fieldId, topic.filter, math.radians(topic.ra),
                    math.radians(topic.decl), math.radians(topic.angle), topic.num_exposures,
                    topic.exposure_times)
+
+    @staticmethod
+    def make_copy(observation, check=False):
+        """
+        Receives an iterable object (like a dictionary) and return a copy of Observation. If check==True makes sure
+        the basic parameters are part of observation. Raise an exception otherwise.
+
+        :param observation:
+        :param check:
+        :return:
+        """
+        ret_obs = Observation()
+
+        for key in observation:
+            try:
+                setattr(ret_obs, key, observation[key])
+            except AttributeError as e:
+                logger.error('Cannot set %s: %s', key, observation[key])
+
+
+        return ret_obs
