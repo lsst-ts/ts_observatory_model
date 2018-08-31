@@ -63,7 +63,7 @@ class TargetTest(unittest.TestCase):
                     "firstdd=False ddvisits=0 "\
                     "need=0.000 bonus=0.000 value=0.000 propboost=1.000 "\
                     "propid=[] need=[] bonus=[] value=[] propboost=[] "\
-                    "slewtime=0.000 cost=0.000 rank=0.000"
+                    "slewtime=0.000 cost=0.000 rank=0.000 note="
         self.assertEqual(str(self.target), truth_str)
 
     def test_driver_state_copy(self):
