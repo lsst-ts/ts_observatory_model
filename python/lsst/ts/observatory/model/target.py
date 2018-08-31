@@ -220,7 +220,7 @@ class Target(object):
         """float: The rotator angle (degrees) of the target."""
         return math.degrees(self.rot_rad)
 
-    @ang.setter
+    @rot.setter
     def rot(self, rot):
         """
         Set camera rotation angle given in degrees
