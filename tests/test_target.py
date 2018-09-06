@@ -87,27 +87,27 @@ class TargetTest(unittest.TestCase):
         self.assertEqual(target2.fieldid, 2142)
 
     def test_creation_from_topic(self):
-        topic = collections.namedtuple('topic', ['target_id', 'fieldId',
+        topic = collections.namedtuple('topic', ['targetId', 'fieldId',
                                                  'filter', 'ra', 'decl',
-                                                 'sky_angle',
-                                                 'num_exposures',
-                                                 'exposure_times'])
-        topic.target_id = 1
+                                                 'skyAngle',
+                                                 'numExposures',
+                                                 'exposureTimes'])
+        topic.targetId = 1
         topic.fieldId = -1
         topic.filter = 'z'
         topic.ra = 274.279376
         topic.decl = -14.441534
-        topic.sky_angle = 45.0
-        topic.num_exposures = 3
-        topic.exposure_times = [5.0, 10.0, 5.0]
+        topic.skyAngle = 45.0
+        topic.numExposures = 3
+        topic.exposureTimes = [5.0, 10.0, 5.0]
         target = Target.from_topic(topic)
-        self.assertEqual(target.targetid, topic.target_id)
+        self.assertEqual(target.targetid, topic.targetId)
         self.assertEqual(target.fieldid, topic.fieldId)
         self.assertEqual(target.filter, topic.filter)
         self.assertEqual(target.ra, topic.ra)
         self.assertAlmostEqual(target.dec, topic.decl, delta=1e-7)
-        self.assertEqual(target.num_exp, topic.num_exposures)
-        self.assertListEqual(target.exp_times, topic.exposure_times)
+        self.assertEqual(target.num_exp, topic.numExposures)
+        self.assertListEqual(target.exp_times, topic.exposureTimes)
 
 class MemoryTestClass(lsst.utils.tests.MemoryTestCase):
     pass
