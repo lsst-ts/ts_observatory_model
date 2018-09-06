@@ -45,8 +45,8 @@ class TargetTest(unittest.TestCase):
         self.target.telrot_rad = self.telrot_rad
 
     def test_basic_information_after_creation(self):
-        self.assertEqual(self.target.targetid, self.targetId)
-        self.assertEqual(self.target.fieldid, self.fieldId)
+        self.assertEqual(self.target.targetId, self.targetId)
+        self.assertEqual(self.target.fieldId, self.fieldId)
         self.assertEqual(self.target.filter, self.band_filter)
         self.assertEqual(self.target.ra, self.ra)
         self.assertEqual(self.target.dec, self.dec)
@@ -54,7 +54,7 @@ class TargetTest(unittest.TestCase):
         self.assertListEqual(self.target.exp_times, self.exposure_times)
 
     def test_string_representation(self):
-        truth_str = "targetid=3 field=2573 filter=r exp_times=[15.0, 15.0] "\
+        truth_str = "targetId=3 field=2573 filter=r exp_times=[15.0, 15.0] "\
                     "ra=300.519 dec=-1.721 ang=45.000 alt=45.000 az=225.000 "\
                     "rot=30.000 telalt=45.000 telaz=225.000 telrot=30.000 "\
                     "time=0.0 airmass=0.000 brightness=0.000 "\
@@ -81,33 +81,33 @@ class TargetTest(unittest.TestCase):
         target2 = self.target.get_copy()
         target2.targetid = 10
         target2.fieldid = 2142
-        self.assertEqual(self.target.targetid, self.targetId)
+        self.assertEqual(self.target.targetId, self.targetId)
         self.assertEqual(target2.targetid, 10)
-        self.assertEqual(self.target.fieldid, self.fieldId)
+        self.assertEqual(self.target.fieldId, self.fieldId)
         self.assertEqual(target2.fieldid, 2142)
 
     def test_creation_from_topic(self):
-        topic = collections.namedtuple('topic', ['target_id', 'fieldId',
+        topic = collections.namedtuple('topic', ['targetId', 'fieldId',
                                                  'filter', 'ra', 'decl',
-                                                 'sky_angle',
-                                                 'num_exposures',
-                                                 'exposure_times'])
-        topic.target_id = 1
+                                                 'skyAngle',
+                                                 'numExposures',
+                                                 'exposureTimes'])
+        topic.targetId = 1
         topic.fieldId = -1
         topic.filter = 'z'
         topic.ra = 274.279376
         topic.decl = -14.441534
-        topic.sky_angle = 45.0
-        topic.num_exposures = 3
-        topic.exposure_times = [5.0, 10.0, 5.0]
+        topic.skyAngle = 45.0
+        topic.numExposures = 3
+        topic.exposureTimes = [5.0, 10.0, 5.0]
         target = Target.from_topic(topic)
-        self.assertEqual(target.targetid, topic.target_id)
-        self.assertEqual(target.fieldid, topic.fieldId)
+        self.assertEqual(target.targetId, topic.targetId)
+        self.assertEqual(target.fieldId, topic.fieldId)
         self.assertEqual(target.filter, topic.filter)
         self.assertEqual(target.ra, topic.ra)
         self.assertAlmostEqual(target.dec, topic.decl, delta=1e-7)
-        self.assertEqual(target.num_exp, topic.num_exposures)
-        self.assertListEqual(target.exp_times, topic.exposure_times)
+        self.assertEqual(target.num_exp, topic.numExposures)
+        self.assertListEqual(target.exp_times, topic.exposureTimes)
 
 class MemoryTestClass(lsst.utils.tests.MemoryTestCase):
     pass

@@ -8,16 +8,16 @@ class Target(object):
     """Class for gathering information for a sky target.
     """
 
-    def __init__(self, targetid=0, fieldid=0, band_filter="",
+    def __init__(self, targetId=0, fieldId=0, band_filter="",
                  ra_rad=0.0, dec_rad=0.0, ang_rad=0.0,
                  num_exp=0, exp_times=[]):
         """Initialize the class.
 
         Parameters
         ----------
-        targetid : int
+        targetId : int
             A unique identifier for the given target.
-        fieldid : int
+        fieldId : int
             The ID of the associated OpSim field for the target.
         band_filter : str
             The single character name of the associated band filter.
@@ -33,8 +33,8 @@ class Target(object):
             The set of exposure times for the target. Needs to length
             of num_exp.
         """
-        self.targetid = targetid
-        self.fieldid = fieldid
+        self.targetId = targetId
+        self.fieldId = fieldId
         self.filter = band_filter
         self.ra_rad = ra_rad
         self.dec_rad = dec_rad
@@ -108,7 +108,7 @@ class Target(object):
 
     def __str__(self):
         """str: The string representation of the instance."""
-        return ("targetid=%d field=%d filter=%s exp_times=%s ra=%.3f "
+        return ("targetId=%d field=%d filter=%s exp_times=%s ra=%.3f "
                 "dec=%.3f ang=%.3f alt=%.3f az=%.3f rot=%.3f "
                 "telalt=%.3f telaz=%.3f telrot=%.3f "
                 "time=%.1f airmass=%.3f brightness=%.3f "
@@ -119,7 +119,7 @@ class Target(object):
                 "need=%.3f bonus=%.3f value=%.3f propboost=%.3f "
                 "propid=%s need=%s bonus=%s value=%s propboost=%s "
                 "slewtime=%.3f cost=%.3f rank=%.3f note=%s" %
-                (self.targetid, self.fieldid, self.filter,
+                (self.targetId, self.fieldId, self.filter,
                  str(self.exp_times),
                  self.ra, self.dec, self.ang,
                  self.alt, self.az, self.rot,
@@ -326,8 +326,8 @@ class Target(object):
     def get_copy(self):
         """:class:`.Target`: Get copy of the instance."""
         newtarget = Target()
-        newtarget.targetid = self.targetid
-        newtarget.fieldid = self.fieldid
+        newtarget.targetId = self.targetId
+        newtarget.fieldId = self.fieldId
         newtarget.filter = self.filter
         newtarget.ra_rad = self.ra_rad
         newtarget.dec_rad = self.dec_rad
