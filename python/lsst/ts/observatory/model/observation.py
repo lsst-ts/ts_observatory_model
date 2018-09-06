@@ -71,7 +71,7 @@ class Observation(Target):
         -------
         :class:`.Target`
         """
-        return cls(topic.targetId, topic.fieldId, topic.filter, math.radians(topic.ra),
+        return cls(topic.target_id, topic.field_id, topic.filter, math.radians(topic.ra),
                    math.radians(topic.decl), math.radians(topic.angle), topic.num_exposures,
                    topic.exposure_times)
 
