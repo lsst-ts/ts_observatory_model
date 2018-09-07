@@ -389,6 +389,20 @@ class Target(object):
         newtarget.note = self.note
 
         return newtarget
+        
+    def to_json(self):
+        """
+        Returns a json serialization of variables in this object
+        """
+        return json.dumps(vars(self))
+
+    def from_json(self, jsonstr):
+        """
+        alternate __init__ method that takes a json representation as the only argument
+        """
+        jsondict = json.loads(jsonstr)
+        for k in jsondict:
+            setattr(self, k, jsondict[k])   
 
     def to_json(self):
         """
@@ -403,7 +417,7 @@ class Target(object):
         jsondict = json.loads(jsonstr)
         for k in jsondict:
             setattr(self, k, jsondict[k])   
-            
+
     @classmethod
     def from_topic(cls, topic):
         """Alternate initializer.
