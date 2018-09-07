@@ -1,6 +1,7 @@
 import math
 import numpy
 import copy
+import json
 
 __all__ = ["Target"]
 
@@ -389,6 +390,20 @@ class Target(object):
 
         return newtarget
 
+    def to_json(self):
+        """
+        Returns a json serialization of variables in this object
+        """
+        return json.dumps(vars(self))
+
+    def from_json(self, jsonstr):
+        """
+        alternate __init__ method that takes a json representation as the only argument
+        """
+        jsondict = json.loads(jsonstr)
+        for k in jsondict:
+            setattr(self, k, jsondict[k])   
+            
     @classmethod
     def from_topic(cls, topic):
         """Alternate initializer.
