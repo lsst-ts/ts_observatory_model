@@ -42,11 +42,11 @@ class ObservatoryModelParameters(object):
         self.domaz_accel_rad = 0.0
         self.domaz_decel_rad = 0.0
         self.domaz_settletime = 0.0
-        self.domaz_free_range = 0.0
+        self.domaz_free_range = 4.0
 
-        self.optics_ol_slope = 0.0
-        self.optics_cl_delay = []
-        self.optics_cl_altlimit = []
+        self.optics_ol_slope = 1.0/3.5
+        self.optics_cl_delay = [0.0, 36.0]
+        self.optics_cl_altlimit = [0.0, 9.0, 90.0]
 
         self.readouttime = 0.0
         self.shuttertime = 0.0
