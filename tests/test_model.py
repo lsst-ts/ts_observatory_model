@@ -246,7 +246,7 @@ class ObservatoryModelTest(unittest.TestCase):
                          "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
                          "telaz=0.000 telrot=0.000 "
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
-
+        # This slew will include a CL optics correction.
         target = Target()
         target.ra_rad = math.radians(60)
         target.dec_rad = math.radians(-20)
@@ -254,10 +254,11 @@ class ObservatoryModelTest(unittest.TestCase):
         target.filter = "r"
 
         delay, status = self.model.get_slew_delay(target)
-        self.assertAlmostEqual(delay, 74.174, delta=1e-3)
+        self.assertAlmostEqual(delay, 85.507, delta=1e-3)
 
         self.model.slew(target)
 
+        # This slew simply includes a filter change.
         target = Target()
         target.ra_rad = math.radians(60)
         target.dec_rad = math.radians(-20)
@@ -267,6 +268,7 @@ class ObservatoryModelTest(unittest.TestCase):
         delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 120, delta=1e-3)
 
+        # This slew does not include OL correction, but does involve dome crawl.
         target = Target()
         target.ra_rad = math.radians(50)
         target.dec_rad = math.radians(-10)
@@ -274,12 +276,14 @@ class ObservatoryModelTest(unittest.TestCase):
         target.filter = "r"
 
         delay, status = self.model.get_slew_delay(target)
-        self.assertAlmostEqual(delay, 22.556, delta=1e-3)
+        self.assertAlmostEqual(delay, 17.913, delta=1e-3)
 
+        # This slew is only readout.
         self.model.slew(target)
         delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 2.0, delta=1e-3)
 
+        # This slew involves rotator.
         target.ang_rad = math.radians(15)
         delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 4.472, delta=1e-3)
@@ -309,13 +313,16 @@ class ObservatoryModelTest(unittest.TestCase):
         slewtime = self.model.get_approximate_slew_delay(alt, az, f)
         self.assertEqual(len(slewtime), len(alt))
 
+
     def test_get_slew_delay_followsky_false(self):
+        # Test slew time without followsky option. Similar to test_get_slew_delay above.
         self.model.update_state(0)
         self.model.params.rotator_followsky = False
-        self.assertEqual(str(self.model.current_state), "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
-                         "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
-                         "telaz=0.000 telrot=0.000 "
-                         "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
+        expected_state = "t=0.0 ra=29.480 dec=-26.744 ang=180.000 " \
+                         "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 " \
+                         "telaz=0.000 telrot=0.000 " \
+                         "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']"
+        self.assertEqual(str(self.model.current_state), expected_state)
 
         target = Target()
         target.ra_rad = math.radians(60)
@@ -324,7 +331,7 @@ class ObservatoryModelTest(unittest.TestCase):
         target.filter = "r"
 
         delay, status = self.model.get_slew_delay(target)
-        self.assertAlmostEqual(delay, 74.174, delta=1e-3)
+        self.assertAlmostEqual(delay, 85.507, delta=1e-3)
 
         self.model.slew(target)
 
@@ -344,12 +351,13 @@ class ObservatoryModelTest(unittest.TestCase):
         target.filter = "r"
 
         delay, status = self.model.get_slew_delay(target)
-        self.assertAlmostEqual(delay, 22.556, delta=1e-3)
+        self.assertAlmostEqual(delay, 17.913, delta=1e-3)
 
         self.model.slew(target)
         delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 2.0, delta=1e-3)
 
+        # Here is the difference when using followsky = False
         target.ang_rad = math.radians(15)
         delay, status = self.model.get_slew_delay(target)
         self.assertAlmostEqual(delay, 2.0, delta=1e-3)
@@ -393,29 +401,25 @@ class ObservatoryModelTest(unittest.TestCase):
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
 
         target = Target()
-        target.ra_rad = math.radians(60)
-        target.dec_rad = math.radians(-20)
+        target.ra_rad = math.radians(35)
+        target.dec_rad = math.radians(-27)
         target.ang_rad = math.radians(0)
         target.filter = "r"
 
+        # Just test whether dome crawl is faster or not.
+        # If we test the final slew state, this is including other aspects of slew model (such as CLoptics).
+        self.model.params.domaz_free_range = 0
         delay_nocrawl = self.model.get_slew_delay(target)
-
         self.model.params.domaz_free_range = np.radians(4.0)
-
         delay_crawl = self.model.get_slew_delay(target)
-
         self.assertTrue( delay_crawl < delay_nocrawl)
-
-        self.model.slew(target)
-        self.assertEqual(str(self.model.current_state), "t=69.5 ra=60.000 dec=-20.000 ang=243.495 "
-                                                        "filter=r track=True alt=60.886 az=76.513 pa=243.377 "
-                                                        "rot=359.882 telaz=76.513 telrot=-0.118 "
-                                                        "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
-
-        self.model.params.domaz_free_range = 0.
 
 
     def test_slewdata(self):
+        # Use old values, to avoid updating final states.
+        self.model.params.domaz_free_range = 0
+        self.model.params.optics_cl_delay = [0, 20.0]
+
         self.model.update_state(0)
 
         target = Target()
@@ -475,6 +479,10 @@ class ObservatoryModelTest(unittest.TestCase):
                                    (-1.194, 4.354, 1.011, -0.598, 1.425))
 
     def test_rotator_followsky_true(self):
+        # Use old values, to avoid updating final states.
+        self.model.params.domaz_free_range = 0
+        self.model.params.optics_cl_delay = [0, 20.0]
+
         self.model.update_state(0)
         self.model.params.rotator_followsky = True
         self.assertEqual(str(self.model.current_state), "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
@@ -493,6 +501,10 @@ class ObservatoryModelTest(unittest.TestCase):
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
 
     def test_rotator_followsky_false(self):
+        # Use old values, to avoid updating final states.
+        self.model.params.domaz_free_range = 0
+        self.model.params.optics_cl_delay = [0, 20.0]
+
         self.model.update_state(0)
         self.model.params.rotator_followsky = False
         self.assertEqual(str(self.model.current_state), "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
@@ -511,7 +523,12 @@ class ObservatoryModelTest(unittest.TestCase):
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
         self.model.params.rotator_followsky = True
 
+
     def test_swap_filter(self):
+        # Use old values, to avoid updating final states.
+        self.model.params.domaz_free_range = 0
+        self.model.params.optics_cl_delay = [0, 20.0]
+
         self.model.update_state(0)
         self.assertEqual(str(self.model.current_state), "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
                          "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
@@ -543,6 +560,8 @@ class ObservatoryModelTest(unittest.TestCase):
     def test_park(self):
         self.model.update_state(0)
 
+        # Start at park, slew to target.
+        # Use default configuration (dome crawl, CL updates, etc.)
         target = Target()
         target.ra_rad = math.radians(60)
         target.dec_rad = math.radians(-20)
@@ -550,68 +569,32 @@ class ObservatoryModelTest(unittest.TestCase):
         target.filter = "z"
 
         self.model.slew(target)
-        self.assertEqual(str(self.model.current_state), "t=140.0 ra=60.000 dec=-20.000 ang=243.495 "
-                         "filter=z track=True alt=61.135 az=76.255 pa=243.252 rot=359.758 "
-                         "telaz=76.255 telrot=-0.242 "
-                         "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
+        expected_state = "t=156.0 ra=60.000 dec=-20.000 ang=243.495 filter=z track=True " \
+                         "alt=61.191 az=76.196 pa=243.224 rot=359.729 telaz=76.196 telrot=-0.271 " \
+                         "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']"
+        self.assertEqual(str(self.model.current_state), expected_state)
         self.check_delay_and_state(self.model,
                                    self.make_slewact_dict((8.387, 11.966, 0.0,
-                                                           7.387, 20.0, 18.775,
-                                                           53.174, 1.0, 120.0,
+                                                           7.387, 36.0, 18.775,
+                                                           48.507, 1.0, 120.0,
                                                            2.0)),
                                    ['telopticsclosedloop', 'filter'],
                                    (-3.50, 7.00, 0.0, -1.75, 1.50))
 
         self.model.park()
-        self.assertEqual(str(self.model.current_state), "t=213.8 ra=30.370 dec=-26.744 ang=180.000 "
-                         "filter=z track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
-                         "telaz=0.000 telrot=0.000 "
-                         "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
+        expected_state = "t=241.1 ra=30.487 dec=-26.744 ang=180.000 filter=z track=False " \
+                         "alt=86.500 az=0.000 pa=180.000 rot=0.000 telaz=0.000 telrot=0.000 " \
+                         "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']"
+        self.assertEqual(str(self.model.current_state), expected_state)
         self.check_delay_and_state(self.model,
-                                   self.make_slewact_dict((8.247, 11.894,
-                                                           0.985, 7.247, 20.0,
-                                                           18.494, 52.836,
+                                   self.make_slewact_dict((8.231, 11.885,
+                                                           1.041, 7.231, 36.0,
+                                                           18.462, 48.130,
                                                            1.0, 0.0, 2.0)),
                                    ['telopticsclosedloop', 'domazsettle',
                                     'domaz'],
-                                   (3.50, -7.00, 0.492, 1.75, -1.50))
+                                   (3.50, -7.00, 0.520, 1.75, -1.50))
 
-        target = Target()
-        target.ra_rad = math.radians(60)
-        target.dec_rad = math.radians(-20)
-        target.ang_rad = math.radians(0)
-        target.filter = "r"
-
-        self.model.slew(target)
-        self.assertEqual(str(self.model.current_state), "t=353.8 ra=60.000 dec=-20.000 ang=243.121 "
-                         "filter=r track=True alt=61.881 az=75.460 pa=242.859 rot=359.738 "
-                         "telaz=75.460 telrot=-0.262 "
-                         "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
-        self.check_delay_and_state(self.model,
-                                   self.make_slewact_dict((8.174, 11.855, 0.0,
-                                                           7.174, 20.0, 18.348,
-                                                           52.657, 1.0, 120.0,
-                                                           2.0)),
-                                   ['telopticsclosedloop', 'filter'],
-                                   (-3.50, 7.00, 0.0, -1.75, 1.50))
-
-        self.model.park()
-        self.assertEqual(str(self.model.current_state), "t=427.1 ra=31.264 dec=-26.744 ang=180.000 "
-                         "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
-                         "telaz=0.000 telrot=0.000 "
-                         "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
-        self.check_delay_and_state(self.model,
-                                   self.make_slewact_dict((8.034, 11.780,
-                                                           1.024, 7.034, 20.0,
-                                                           18.068, 52.307, 1.0,
-                                                           0.0, 2.0)),
-                                   ['telopticsclosedloop', 'domazsettle',
-                                    'domaz'],
-                                   (3.50, -7.00, 0.512, 1.75, -1.50))
-        self.assertEqual(str(self.model.park_state), "t=0.0 ra=0.000 dec=0.000 ang=0.000 "
-                         "filter=r track=False alt=86.500 az=0.000 pa=0.000 rot=0.000 "
-                         "telaz=0.000 telrot=0.000 "
-                         "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
 
     def test_get_deep_drilling_time(self):
         target = Target()
@@ -625,17 +608,21 @@ class ObservatoryModelTest(unittest.TestCase):
         ddtime = self.model.get_deep_drilling_time(target)
         self.assertEqual(ddtime, 3808.0)
 
+
     def test_get_configure_dict(self):
         cd = ObservatoryModel.get_configure_dict()
         self.assertEqual(len(cd), 7)
         self.assertEqual(len(cd["telescope"]), 11)
         self.assertEqual(len(cd["camera"]), 10)
 
+
 class MemoryTestClass(lsst.utils.tests.MemoryTestCase):
     pass
 
+
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()
