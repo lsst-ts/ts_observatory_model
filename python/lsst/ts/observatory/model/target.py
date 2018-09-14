@@ -1,6 +1,7 @@
 import math
 import numpy
 import copy
+import json
 
 __all__ = ["Target"]
 
@@ -388,6 +389,27 @@ class Target(object):
         newtarget.note = self.note
 
         return newtarget
+
+    def to_json(self):
+        """
+        Returns a json serialization of variables in this object
+        """
+        return json.dumps(vars(self))
+
+    def from_json(self, jsonstr):
+        """
+        alternate __init__ method that takes a json representation as the only argument
+        """
+        mandatory_fields = ["targetid", "fieldid", "filter", "ra_rad", "dec_rad", "ang_rad", "num_exp", "exp_times"]
+
+        jsondict = json.loads(jsonstr)
+        for f in mandatory_fields:
+            if f not in jsondict.keys():
+                raise KeyError("json blob passed to Target()'s json constructor is missing required attribute: " + f)
+
+
+        for k in jsondict:
+            setattr(self, k, jsondict[k])   
 
     @classmethod
     def from_topic(cls, topic):

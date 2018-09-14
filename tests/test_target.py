@@ -52,6 +52,26 @@ class TargetTest(unittest.TestCase):
         self.assertEqual(self.target.dec, self.dec)
         self.assertEqual(self.target.num_exp, self.num_exposures)
         self.assertListEqual(self.target.exp_times, self.exposure_times)
+    
+    def test_json_serialization(self):
+        jsondump = self.target.to_json()
+        target2 = Target()
+        target2.from_json(jsondump)
+        self.assertEqual(self.target.targetid, target2.targetid)
+        self.assertEqual(self.target.fieldid, target2.fieldid)
+        self.assertEqual(self.target.filter, target2.filter)
+        self.assertEqual(self.target.ra_rad, target2.ra_rad)
+        self.assertEqual(self.target.dec_rad, target2.dec_rad)
+        self.assertEqual(self.target.num_exp, target2.num_exp)
+        self.assertListEqual(self.target.exp_times, target2.exp_times)
+
+    def test_json_ingest_has_required_params(self):
+        self.assertRaises(KeyError, self.init_target_with_bad_json)
+
+    def init_target_with_bad_json(self):
+        missingfilter = '{"targetid": 3, "fieldid": 2573, "ra_rad": 5.24504477561707, "dec_rad": -0.030036505561584215, "ang_rad": 0.7853981633974483, "num_exp": 2, "exp_times": [15.0, 15.0], "_exp_time": null, "time": 0.0, "airmass": 0.0, "sky_brightness": 0.0, "cloud": 0.0, "seeing": 0.0, "propid": 0, "need": 0.0, "bonus": 0.0, "value": 0.0, "goal": 0, "visits": 0, "progress": 0.0, "sequenceid": 0, "subsequencename": "", "groupid": 0, "groupix": 0, "is_deep_drilling": false, "is_dd_firstvisit": false, "remaining_dd_visits": 0, "dd_exposures": 0, "dd_filterchanges": 0, "dd_exptime": 0.0, "alt_rad": 0.7853981633974483, "az_rad": 3.9269908169872414, "rot_rad": 0.5235987755982988, "telalt_rad": 0.7853981633974483, "telaz_rad": 3.9269908169872414, "telrot_rad": 0.5235987755982988, "propboost": 1.0, "slewtime": 0.0, "cost": 0.0, "rank": 0.0, "num_props": 0, "propid_list": [], "need_list": [], "bonus_list": [], "value_list": [], "propboost_list": [], "sequenceid_list": [], "subsequencename_list": [], "groupid_list": [], "groupix_list": [], "is_deep_drilling_list": [], "is_dd_firstvisit_list": [], "remaining_dd_visits_list": [], "dd_exposures_list": [], "dd_filterchanges_list": [], "dd_exptime_list": [], "last_visit_time": 0.0, "note": ""}'
+        t = Target()
+        t.from_json(missingfilter)
 
     def test_string_representation(self):
         truth_str = "targetid=3 field=2573 filter=r exp_times=[15.0, 15.0] "\
