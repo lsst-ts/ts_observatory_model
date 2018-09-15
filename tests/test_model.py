@@ -193,6 +193,10 @@ class ObservatoryModelTest(unittest.TestCase):
 
     def test_slew_altaz(self):
         self.model.update_state(0)
+        # Use old values, to avoid updating final states.
+        self.model.params.domaz_free_range = 0
+        self.model.params.optics_cl_delay = [0, 20.0]
+
         self.assertEqual(str(self.model.current_state), "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
                          "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
                          "telaz=0.000 telrot=0.000 "
@@ -218,6 +222,10 @@ class ObservatoryModelTest(unittest.TestCase):
 
     def test_slew_radec(self):
         self.model.update_state(0)
+        # Use old values, to avoid updating final states.
+        self.model.params.domaz_free_range = 0
+        self.model.params.optics_cl_delay = [0, 20.0]
+        self.model.params.rotator_followsky = True
         self.assertEqual(str(self.model.current_state), "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
                          "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
                          "telaz=0.000 telrot=0.000 "
@@ -241,6 +249,9 @@ class ObservatoryModelTest(unittest.TestCase):
 
     def test_get_slew_delay(self):
         self.model.update_state(0)
+        # Use old values, to avoid updating final states.
+        self.model.params.domaz_free_range = 0
+        self.model.params.optics_cl_delay = [0, 20.0]
         self.model.params.rotator_followsky = True
         self.assertEqual(str(self.model.current_state), "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
                          "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
@@ -416,11 +427,11 @@ class ObservatoryModelTest(unittest.TestCase):
 
 
     def test_slewdata(self):
+        self.model.update_state(0)
         # Use old values, to avoid updating final states.
         self.model.params.domaz_free_range = 0
         self.model.params.optics_cl_delay = [0, 20.0]
-
-        self.model.update_state(0)
+        self.model.params.rotator_followsky = True
 
         target = Target()
         target.ra_rad = math.radians(60)
