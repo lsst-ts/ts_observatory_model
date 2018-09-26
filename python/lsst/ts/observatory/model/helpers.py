@@ -41,7 +41,7 @@ def read_conf_file(filename):
     dict
         A dictionary from the configuration file.
     """
-    config = configparser.SafeConfigParser()
+    config = configparser.ConfigParser()
     config.read(filename)
 
     from collections import defaultdict
