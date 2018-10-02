@@ -536,6 +536,7 @@ class ObservatoryModelTest(unittest.TestCase):
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
 
 
+
     def test_swap_filter(self):
         # Use old values, to avoid updating final states.
         self.model.params.domaz_free_range = 0
