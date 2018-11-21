@@ -516,10 +516,9 @@ class ObservatoryModelTest(unittest.TestCase):
 
     def test_rotator_followsky_false(self):
         # Use old values, to avoid updating final states.
+        self.model.update_state(0)
         self.model.params.domaz_free_range = 0
         self.model.params.optics_cl_delay = [0, 20.0]
-
-        self.model.update_state(0)
         self.model.params.rotator_followsky = False
         self.assertEqual(str(self.model.current_state), "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
                          "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
@@ -535,14 +534,14 @@ class ObservatoryModelTest(unittest.TestCase):
                          "filter=r track=True alt=30.744 az=69.709 pa=234.123 rot=359.881 "
                          "telaz=69.709 telrot=-0.119 "
                          "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']")
-        self.model.params.rotator_followsky = True
+
 
 
     def test_swap_filter(self):
         # Use old values, to avoid updating final states.
         self.model.params.domaz_free_range = 0
         self.model.params.optics_cl_delay = [0, 20.0]
-
+        self.model.params.rotator_followsky = True
         self.model.update_state(0)
         self.assertEqual(str(self.model.current_state), "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
                          "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
@@ -573,7 +572,8 @@ class ObservatoryModelTest(unittest.TestCase):
 
     def test_park(self):
         self.model.update_state(0)
-
+        self.model.params.rotator_followsky = False
+        self.model.params.rotator_resume_angle = False
         # Start at park, slew to target.
         # Use default configuration (dome crawl, CL updates, etc.)
         target = Target()
