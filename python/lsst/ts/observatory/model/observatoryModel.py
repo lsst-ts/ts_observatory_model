@@ -1,44 +1,35 @@
 import logging
+import os
 import math
 import numpy as np
-import os
-
 import palpy as pal
-
-from lsst.ts.dateloc import DateProfile, ObservatoryLocation
-from lsst.ts.observatory.model import ObservatoryModelParameters
-from lsst.ts.observatory.model import ObservatoryPosition
+from astropy.time import Time
+from lsst.ts.dateloc import DateProfile,
 from lsst.ts.observatory.model import ObservatoryState
-from lsst.ts.observatory.model import read_conf_file
+
 
 __all__ = ["ObservatoryModel"]
 
+
 TWOPI = 2 * np.pi
+
 
 class ObservatoryModel(object):
     """Class for modeling the observatory.
+
+    Parameters
+    ----------
+    config: ObservatoryModelConfig
+        Default (none) will use default values of ObservatoryModelConfig.
+    log_level : int
+        Set the logging level for the class. Default is logging.DEBUG.
     """
-
-    def __init__(self, location=None, log_level=logging.DEBUG):
-        """Initialize the class.
-
-        Parameters
-        ----------
-        location : lsst.ts.dateloc.ObservatoryLocation, optional
-            An instance of the observatory location. Default is None,
-            but this sets up the LSST as the location.
-        log_level : int
-            Set the logging level for the class. Default is logging.DEBUG.
-        """
+    def __init__(self, config=None, log_level=logging.DEBUG):
         self.log = logging.getLogger("ObservatoryModel")
         self.log_level = log_level
 
-        self.params = ObservatoryModelParameters()
-        if location is None:
-            self.location = ObservatoryLocation()
-            self.location.for_lsst()
-        else:
-            self.location = location
+        self._configure(config)
+
         self.park_state = ObservatoryState()
         self.current_state = ObservatoryState()
 
@@ -74,19 +65,38 @@ class ObservatoryModel(object):
         """str: The string representation of the model."""
         return str(self.current_state)
 
-    @classmethod
-    def get_configure_dict(cls):
-        """Get the configuration dictionary for the observatory model.
+    def _configure(self, config=None):
+        """Configure the model. After 'configure' the model config will be frozen.
+
+        Parameters
+        ----------
+        config: DowntimeModelConfig, opt
+            A configuration class for the downtime model.
+            This can be None, in which case the default values are used.
+        """
+        if config is None:
+            self.config = ObservatoryModelConfig()
+        else:
+            if not isinstance(config, ObservatoryModelConfig):
+                raise ValueError('Must use an ObservatoryModelConfig')
+            self.config = config
+        self.config.validate()
+        self.config.freeze()
+
+    def config_info(self):
+        """Report configuration parameters and version information.
 
         Returns
         -------
-        dict
-            The configuration dictionary for the observatory model.
+        OrderedDict
         """
-        conf_file = os.path.join(os.path.dirname(__file__),
-                                 "observatory_model.conf")
-        conf_dict = read_conf_file(conf_file)
-        return conf_dict
+        config_info = OrderedDict()
+        config_info['ObservatoryModel_version'] = '%s' % version.__version__
+        config_info['ObservatoryModel_sha'] = '%s' % version.__fingerprint__
+        for k, v in self.config.iteritems():
+            config_info[k] = v
+        return config_info
+
 
     def altaz2radecpa(self, dateprofile, alt_rad, az_rad):
         """Converts alt, az coordinates into ra, dec for the given time.

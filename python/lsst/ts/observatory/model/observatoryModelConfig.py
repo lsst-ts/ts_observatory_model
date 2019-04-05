@@ -1,9 +1,48 @@
 import lsst.pex.config as pexConfig
+from lsst.sims.utils import Site
+import lsst.sims.utils.version as sims_utils_version
 
-
-__all__ = ['TelescopeModelConfig', 'DomeModelConfig', 'RotatorModelConfig',
+__all__ = ['ObservatoryModelConfig', 'TelescopeModelConfig', 'DomeModelConfig', 'RotatorModelConfig',
            'CameraModelConfig', 'OpticsLoopCorrectionModelConfig',
            'SlewRequirementsModelConfig', 'ParkModelConfig']
+
+
+class ObservatoryModelConfig(pexConfig.Config):
+    """A pex_config configuration class for the entire observatory model.
+    """
+    efd_columns = pexConfig.ListField(doc="List of data required from EFD",
+                                      dtype=str,
+                                      default=['observatory_state'])
+    efd_delta_time = pexConfig.Field(
+        doc="Length (delta time) of history to request from the EFD (seconds)",
+        dtype=float,
+        default=0)
+    target_columns = pexConfig.ListField(doc="Names of the keys required in the "
+                                             "scheduler target maps (altitude/azimuth)",
+                                         dtype=str,
+                                         default=['altitude', 'azimuth'])
+
+    site = pexConfig.ConfigField(doc="Location of the observatory site",
+                                 dtype=Site,
+                                 default=Site('LSST'))
+    # Track version of site
+    site_version = sims_utils_version.__version__
+    site_sha = sims_utils_version.__fingerprint__
+
+    telescope = pexConfig.ConfigField(doc='Configuration parameters for the telescope model',
+                                      dtype=TelescopeModelConfig)
+    dome = pexConfig.ConfigField(doc='Configuration parameters for the dome model',
+                                 dtype=DomeModelConfig)
+    rotator = pexConfig.ConfigField(doc='Configuration parameters for the rotator',
+                                    dtype=RotatorModelConfig)
+    camera = pexConfig.ConfigField(doc='Configuration parameters for the camera',
+                                   dtype=CameraModelConfig)
+    optics = pexConfig.ConfigField(doc='Configuration parameters for the optics loop corrections',
+                                   dtype=OpticsLoopCorrectionModelConfig)
+    slew = pexConfig.ConfigField(doc='Configuration parameters for the slew requirements',
+                                 dtype=SlewRequirementsModelConfig)
+    park = pexConfig.ConfigField(doc='Configuration parameters for park mode',
+                                 dtype=ParkModelConfig)
 
 
 class TelescopeModelConfig(pexConfig.Config):
