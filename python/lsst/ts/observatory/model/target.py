@@ -70,12 +70,7 @@ class Target(object):
                 "telalt=%.3f telaz=%.3f telrot=%.3f "
                 "time=%.1f airmass=%.3f brightness=%.3f "
                 "cloud=%.2f seeing=%.2f "
-                "visits=%i progress=%.2f%% "
-                "seqid=%i ssname=%s groupid=%i groupix=%i "
-                "firstdd=%s ddvisits=%i "
-                "need=%.3f bonus=%.3f value=%.3f propboost=%.3f "
-                "propid=%s need=%s bonus=%s value=%s propboost=%s "
-                "slewtime=%.3f cost=%.3f rank=%.3f note=%s" %
+                "slewtime=%.3f note=%s" %
                 (self.targetid, self.fieldid, self.filter,
                  str(self.exp_times),
                  self.ra, self.dec, self.ang,
@@ -83,14 +78,7 @@ class Target(object):
                  self.telalt, self.telaz, self.telrot,
                  self.time, self.airmass, self.sky_brightness,
                  self.cloud, self.seeing,
-                 self.visits, 100 * self.progress,
-                 self.sequenceid, self.subsequencename,
-                 self.groupid, self.groupix,
-                 self.is_dd_firstvisit, self.remaining_dd_visits,
-                 self.need, self.bonus, self.value, self.propboost,
-                 self.propid_list, numpy.round(self.need_list, 3), numpy.round(self.bonus_list, 3),
-                 numpy.round(self.value_list, 3), numpy.round(self.propboost_list, 3),
-                 self.slewtime, self.cost, self.rank, self.note))
+                 self.slewtime,self.note))
 
     @property
     def alt(self):
@@ -247,7 +235,7 @@ class Target(object):
         if self._exp_time is None:
             return sum(self.exp_times)
         else:
-            self._exp_time
+            return self._exp_time
 
     @exp_time.setter
     def exp_time(self, exp_time):
@@ -291,29 +279,12 @@ class Target(object):
         newtarget.ang_rad = self.ang_rad
         newtarget.num_exp = self.num_exp
         newtarget.exp_times = list(self.exp_times)
+
         newtarget.time = self.time
         newtarget.airmass = self.airmass
         newtarget.sky_brightness = self.sky_brightness
         newtarget.cloud = self.cloud
         newtarget.seeing = self.seeing
-        newtarget.propid = self.propid
-        newtarget.need = self.need
-        newtarget.bonus = self.bonus
-        newtarget.value = self.value
-        newtarget.goal = self.goal
-        newtarget.visits = self.visits
-        newtarget.progress = self.progress
-
-        newtarget.sequenceid = self.sequenceid
-        newtarget.subsequencename = self.subsequencename
-        newtarget.groupid = self.groupid
-        newtarget.groupix = self.groupix
-        newtarget.is_deep_drilling = self.is_deep_drilling
-        newtarget.is_dd_firstvisit = self.is_dd_firstvisit
-        newtarget.remaining_dd_visits = self.remaining_dd_visits
-        newtarget.dd_exposures = self.dd_exposures
-        newtarget.dd_filterchanges = self.dd_filterchanges
-        newtarget.dd_exptime = self.dd_exptime
 
         newtarget.alt_rad = self.alt_rad
         newtarget.az_rad = self.az_rad
@@ -321,26 +292,7 @@ class Target(object):
         newtarget.telalt_rad = self.telalt_rad
         newtarget.telaz_rad = self.telaz_rad
         newtarget.telrot_rad = self.telrot_rad
-        newtarget.propboost = self.propboost
         newtarget.slewtime = self.slewtime
-        newtarget.cost = self.cost
-        newtarget.rank = self.rank
-        newtarget.num_props = self.num_props
-        newtarget.propid_list = list(self.propid_list)
-        newtarget.need_list = list(self.need_list)
-        newtarget.bonus_list = list(self.bonus_list)
-        newtarget.value_list = list(self.value_list)
-        newtarget.propboost_list = list(self.propboost_list)
-        newtarget.sequenceid_list = list(self.sequenceid_list)
-        newtarget.subsequencename_list = list(self.subsequencename_list)
-        newtarget.groupid_list = list(self.groupid_list)
-        newtarget.groupix_list = list(self.groupix_list)
-        newtarget.is_deep_drilling_list = list(self.is_deep_drilling_list)
-        newtarget.is_dd_firstvisit_list = list(self.is_dd_firstvisit_list)
-        newtarget.remaining_dd_visits_list = list(self.remaining_dd_visits_list)
-        newtarget.dd_exposures_list = list(self.dd_exposures_list)
-        newtarget.dd_filterchanges_list = list(self.dd_filterchanges_list)
-        newtarget.dd_exptime_list = list(self.dd_exptime_list)
 
         newtarget.note = self.note
 
@@ -356,12 +308,14 @@ class Target(object):
         """
         alternate __init__ method that takes a json representation as the only argument
         """
-        mandatory_fields = ["targetid", "fieldid", "filter", "ra_rad", "dec_rad", "ang_rad", "num_exp", "exp_times"]
+        mandatory_fields = ["targetid", "fieldid", "filter", "ra_rad", "dec_rad",
+                            "ang_rad", "num_exp", "exp_times"]
 
         jsondict = json.loads(jsonstr)
         for f in mandatory_fields:
             if f not in jsondict.keys():
-                raise KeyError("json blob passed to Target()'s json constructor is missing required attribute: " + f)
+                raise KeyError("json blob passed to Target()'s json constructor "
+                               "is missing required attribute: " + f)
 
 
         for k in jsondict:

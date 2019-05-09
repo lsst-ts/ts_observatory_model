@@ -1,15 +1,59 @@
+from collections import OrderedDict
 import lsst.pex.config as pexConfig
 from lsst.sims.utils import Site
 import lsst.sims.utils.version as sims_utils_version
+from lsst.ts.observatory.model import version
 
-__all__ = ['ObservatoryModelConfig', 'TelescopeModelConfig', 'DomeModelConfig', 'RotatorModelConfig',
-           'CameraModelConfig', 'OpticsLoopCorrectionModelConfig',
+__all__ = ['Config', 'ObservatoryModelConfig', 'TelescopeModelConfig', 'DomeModelConfig',
+           'RotatorModelConfig', 'CameraModelConfig', 'OpticsLoopCorrectionModelConfig',
            'SlewRequirementsModelConfig', 'ParkModelConfig']
 
 
+class Config(object):
+
+    def __init__(self):
+        self.site = Site('LSST')
+        # Track version of site
+        self.site_version = sims_utils_version.__version__
+        self.site_sha = sims_utils_version.__fingerprint__
+
+        self.observatory = ObservatoryModelConfig()
+        self.telescope = TelescopeModelConfig()
+        self.dome = DomeModelConfig()
+        self.rotator = RotatorModelConfig()
+        self.camera = CameraModelConfig()
+        self.optics = OpticsLoopCorrectionModelConfig()
+        self.slew = SlewRequirementsModelConfig()
+        self.park = ParkModelConfig()
+
+        self.modelNames = ['observatory', 'telescope', 'dome', 'rotator',
+                           'camera', 'optics', 'slew', 'park']
+        self.modelConfigs = [self.observatory, self.telescope, self.dome, self.rotator,
+                             self.camera, self.optics, self.slew, self.park]
+
+    def config_info(self):
+        config_info = OrderedDict()
+        config_info['ts_observatory_model_version'] = '%s' % version.__version__
+        config_info['ts_observatory_model sha'] = '%s' % version.__fingerprint__
+        config_info['sims_utils version'] = '%s' % sims_utils_version.__version__
+        config_info['sims_utils sha'] = '%s' % sims_utils_version.__fingerprint__
+        config_info['site (sims_utils)'] = '%s' % self.site.name
+        for name, conf in zip(self.modelNames, self.modelConfigs):
+            for k, v in conf.iteritems():
+                config_info['%s.%s' % (name, k)] = v
+        return config_info
+
+    def validate(self):
+        for conf in self.modelConfigs:
+            conf.validate()
+
+    def freeze(self):
+        for conf in self.modelConfigs:
+            conf.freeze()
+
+
 class ObservatoryModelConfig(pexConfig.Config):
-    """A pex_config configuration class for the entire observatory model.
-    """
+    """A pex_config configuration class for the observatory model as a 'scheduler' model."""
     efd_columns = pexConfig.ListField(doc="List of data required from EFD",
                                       dtype=str,
                                       default=['observatory_state'])
@@ -21,28 +65,6 @@ class ObservatoryModelConfig(pexConfig.Config):
                                              "scheduler target maps (altitude/azimuth)",
                                          dtype=str,
                                          default=['altitude', 'azimuth'])
-
-    site = pexConfig.ConfigField(doc="Location of the observatory site",
-                                 dtype=Site,
-                                 default=Site('LSST'))
-    # Track version of site
-    site_version = sims_utils_version.__version__
-    site_sha = sims_utils_version.__fingerprint__
-
-    telescope = pexConfig.ConfigField(doc='Configuration parameters for the telescope model',
-                                      dtype=TelescopeModelConfig)
-    dome = pexConfig.ConfigField(doc='Configuration parameters for the dome model',
-                                 dtype=DomeModelConfig)
-    rotator = pexConfig.ConfigField(doc='Configuration parameters for the rotator',
-                                    dtype=RotatorModelConfig)
-    camera = pexConfig.ConfigField(doc='Configuration parameters for the camera',
-                                   dtype=CameraModelConfig)
-    optics = pexConfig.ConfigField(doc='Configuration parameters for the optics loop corrections',
-                                   dtype=OpticsLoopCorrectionModelConfig)
-    slew = pexConfig.ConfigField(doc='Configuration parameters for the slew requirements',
-                                 dtype=SlewRequirementsModelConfig)
-    park = pexConfig.ConfigField(doc='Configuration parameters for park mode',
-                                 dtype=ParkModelConfig)
 
 
 class TelescopeModelConfig(pexConfig.Config):
@@ -168,13 +190,13 @@ class CameraModelConfig(pexConfig.Config):
     filter_max_changes_avg_time = pexConfig.Field(doc="Time for avg_num of filter changes (sec)",
                                                   dtype=float,
                                                   default=365.25 * 24 * 60 * 60)
-    filter_mounted = pexConfig.ListField(doc="Initial state for the mounted filters",
-                                         dtype=str,
-                                         default=['g', 'r', 'i', 'z', 'y'])
+    filters_mounted = pexConfig.ListField(doc="Initial state for the mounted filters",
+                                          dtype=str,
+                                          default=['g', 'r', 'i', 'z', 'y'])
     filters_removable = pexConfig.ListField(doc="List of filters that are removable for initial swapping",
                                             dtype=str,
                                             default=['z', 'y'])
-    filters_umounted = pexConfig.ListField(doc="List of filters which are unmounted in initial state",
+    filters_unmounted = pexConfig.ListField(doc="List of filters which are unmounted in initial state",
                                            dtype=str,
                                            default=['u'])
 

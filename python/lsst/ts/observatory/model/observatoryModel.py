@@ -1,11 +1,13 @@
 import logging
-import os
+import warnings
 import math
 import numpy as np
 import palpy as pal
-from astropy.time import Time
-from lsst.ts.dateloc import DateProfile,
-from lsst.ts.observatory.model import ObservatoryState
+from .observatoryModelConfig import Config
+from lsst.ts.observatory.model import ObservatoryPosition, ObservatoryState
+
+warnings.filterwarnings("ignore",
+                        message='.*taiutc.*dubious.year.*')
 
 
 __all__ = ["ObservatoryModel"]
@@ -19,24 +21,23 @@ class ObservatoryModel(object):
 
     Parameters
     ----------
-    config: ObservatoryModelConfig
-        Default (none) will use default values of ObservatoryModelConfig.
+    time: astropy.time.Time
+        Time for the initial telescope state.
+    config: ~lsst.ts.observatory.model.Config
+        Default (none) will use default values of the configuration.
     log_level : int
         Set the logging level for the class. Default is logging.DEBUG.
     """
-    def __init__(self, config=None, log_level=logging.DEBUG):
+    def __init__(self, time, config=None, log_level=logging.DEBUG):
+
         self.log = logging.getLogger("ObservatoryModel")
         self.log_level = log_level
-
-        self._configure(config)
-
-        self.park_state = ObservatoryState()
-        self.current_state = ObservatoryState()
-
-        self.dateprofile = DateProfile(0.0, self.location)
+        self.time = time
+        self.configure(config)
 
         self.filters = ["u", "g", "r", "i", "z", "y"]
 
+        # Define activities and summarize prerequisites for each activity.
         self.activities = ["telalt",
                            "telaz",
                            "telrot",
@@ -49,6 +50,14 @@ class ObservatoryModel(object):
                            "filter",
                            "readout",
                            "exposures"]
+        # Define general prereqs for each activity.
+        self.prerequisites = {}
+        for activity in self.activities:
+            key = "prereq_" + activity
+            self.prerequisites[activity] = list(self.conf.slew.prereq_["slew"][key])
+            return
+            XXXX
+        # Define functions, delay, and longest_preqreq for each activity.
         self.function_get_delay_for = {}
         self.delay_for = {}
         self.longest_prereq_for = {}
@@ -60,28 +69,59 @@ class ObservatoryModel(object):
         self.lastslew_delays_dict = {}
         self.lastslew_criticalpath = []
         self.filter_changes_list = []
+        # Set the telescope to the park state.
+        self.park()
 
     def __str__(self):
         """str: The string representation of the model."""
         return str(self.current_state)
 
-    def _configure(self, config=None):
+    def configure(self, config=None):
         """Configure the model. After 'configure' the model config will be frozen.
+        Set the telescope to the park state.
 
         Parameters
         ----------
-        config: DowntimeModelConfig, opt
-            A configuration class for the downtime model.
-            This can be None, in which case the default values are used.
+        config: ~lsst.ts.observatory.model.Config
         """
         if config is None:
-            self.config = ObservatoryModelConfig()
+            self.conf = Config()
         else:
-            if not isinstance(config, ObservatoryModelConfig):
-                raise ValueError('Must use an ObservatoryModelConfig')
-            self.config = config
-        self.config.validate()
-        self.config.freeze()
+            self.conf = config
+        self.conf.validate()
+        self.conf.freeze()
+        self.site = self.conf.site
+
+        # Set the 'current' state (to defaults, except for filters)
+        self.current_state = ObservatoryState(self.time)
+        self.current_state.mountedfilters = self.conf.camera.filters_mounted
+        self.current_state.unmountedfilters = self.conf.camera.filters_unmounted
+        # Set the 'park' state
+        self.configure_park()
+
+    def configure_park(self):
+        """Configure the telescope park state parameters.
+
+        Parameters
+        ----------
+        confdict : dict
+            The set of configuration parameters for the telescope park state.
+        """
+        # band_filter for the park state is the filter that should be in place during a filter change.
+        self.park_state = ObservatoryState(time = self.current_state.time,
+                                           alt_rad = math.radians(self.conf.park.telescope_altitude),
+                                           az_rad = math.radians(self.conf.park.telescope_azimuth),
+                                           rot_rad = math.radians(self.conf.park.telescope_rotator),
+                                           telalt_rad = math.radians(self.conf.park.telescope_altitude),
+                                           telaz_rad = math.radians(self.conf.park.telescope_azimuth),
+                                           telrot_rad = math.radians(self.conf.park.telescope_rotator),
+                                           domalt_rad = math.radians(self.conf.park.dome_altitude),
+                                           domaz_rad = math.radians(self.conf.park.dome_azimuth),
+                                           band_filter = self.conf.park.filter_position,
+                                           mountedfilters = self.current_state.mountedfilters,
+                                           unmountedfilters = self.current_state.unmountedfilters,
+                                           tracking=False)
+        self.log.log(self.log_level, "Configured park: %s" % (self.park_state))
 
     def config_info(self):
         """Report configuration parameters and version information.
@@ -90,38 +130,7 @@ class ObservatoryModel(object):
         -------
         OrderedDict
         """
-        config_info = OrderedDict()
-        config_info['ObservatoryModel_version'] = '%s' % version.__version__
-        config_info['ObservatoryModel_sha'] = '%s' % version.__fingerprint__
-        for k, v in self.config.iteritems():
-            config_info[k] = v
-        return config_info
-
-
-    def altaz2radecpa(self, dateprofile, alt_rad, az_rad):
-        """Converts alt, az coordinates into ra, dec for the given time.
-
-        Parameters
-        ----------
-        dateprofile : lsst.ts.dateloc.DateProfile
-            Instance containing the time information.
-        alt_rad : float
-            The altitude in radians
-        az_rad : float
-            The azimuth in radians
-
-        Returns
-        -------
-        tuple(float, float, float)
-            (right ascension in radians, declination in radians, parallactic angle in radians)
-        """
-        lst_rad = dateprofile.lst_rad
-
-        (ha_rad, dec_rad) = pal.dh2e(az_rad, alt_rad, self.location.latitude_rad)
-        pa_rad = divmod(pal.pa(ha_rad, dec_rad, self.location.latitude_rad), TWOPI)[1]
-        ra_rad = divmod(lst_rad - ha_rad, TWOPI)[1]
-
-        return (ra_rad, dec_rad, pa_rad)
+        return self.conf.config_info()
 
     @staticmethod
     def compute_kinematic_delay(distance, maxspeed, accel, decel, free_range=0.):
@@ -257,26 +266,27 @@ class ObservatoryModel(object):
         deltaAz = np.minimum(deltaAz, np.abs(deltaAz - 2 * np.pi))
 
         # Calculate how long the telescope will take to slew to this position.
-        telAltSlewTime = self._uamSlewTime(deltaAlt, self.params.telalt_maxspeed_rad,
-                                           self.params.telalt_accel_rad )
-        telAzSlewTime = self._uamSlewTime(deltaAz, self.params.telaz_maxspeed_rad,
-                                          self.params.telaz_accel_rad)
+        telAltSlewTime = self._uamSlewTime(deltaAlt, self.conf.telescope.telalt_maxspeed_rad,
+                                           self.conf.telescope.telalt_accel_rad )
+        telAzSlewTime = self._uamSlewTime(deltaAz, self.conf.telescope.telaz_maxspeed_rad,
+                                          self.conf.telescope.telaz_accel_rad)
         totTelTime = np.maximum(telAltSlewTime, telAzSlewTime)
         # Time for open loop optics correction
-        olTime = deltaAlt / self.params.optics_ol_slope
+        olTime = deltaAlt / self.conf.optics.optics_ol_slope
         totTelTime += olTime
         # Add time for telescope settle.
         settleAndOL = np.where(totTelTime > 0)
-        totTelTime[settleAndOL] += np.maximum(0, self.params.mount_settletime - olTime[settleAndOL])
+        totTelTime[settleAndOL] += np.maximum(0, self.conf.telescope.mount_settletime - olTime[settleAndOL])
         # And readout puts a floor on tel time
-        totTelTime = np.maximum(self.params.readouttime, totTelTime)
+        totTelTime = np.maximum(self.conf.camera.readouttime, totTelTime)
 
         # now compute dome slew time
         if lax_dome:
+            # REPPLACE THIS -- should use the free range parameter.
             totDomeTime = np.zeros(len(alt_rad), float)
             # model dome creep, dome slit, and no azimuth settle
             # if we can fit both exposures in the dome slit, do so
-            sameDome = np.where(deltaAlt ** 2 + deltaAz ** 2 < self.params.camera_fov ** 2)
+            sameDome = np.where(deltaAlt ** 2 + deltaAz ** 2 < self.conf.camera.camera_fov ** 2)
 
             # else, we take the minimum time from two options:
             # 1. assume we line up alt in the center of the dome slit so we
@@ -292,16 +302,16 @@ class ObservatoryModel(object):
             domDeltaAlt = deltaAlt
             # on each side, we can start out with the dome shifted away from
             # the center of the field by an amount domSlitRadius - fovRadius
-            domSlitDiam = self.params.camera_fov / 2.0
-            domDeltaAz = deltaAz - 2 * (domSlitDiam / 2 - self.params.camera_fov / 2)
-            domAltSlewTime = domDeltaAlt / self.params.domalt_maxspeed_rad
-            domAzSlewTime = domDeltaAz / self.params.domaz_maxspeed_rad
+            domSlitDiam = self.conf.camera.camera_fov / 2.0
+            domDeltaAz = deltaAz - 2 * (domSlitDiam / 2 - self.conf.camera.camera_fov / 2)
+            domAltSlewTime = domDeltaAlt / self.conf.dome.domalt_maxspeed_rad
+            domAzSlewTime = domDeltaAz / self.conf.dome.domaz_maxspeed_rad
             totDomTime1 = np.maximum(domAltSlewTime, domAzSlewTime)
 
-            domDeltaAlt = deltaAlt - 2 * (domSlitDiam / 2 - self.params.camera_fov / 2)
+            domDeltaAlt = deltaAlt - 2 * (domSlitDiam / 2 - self.conf.camera.camera_fov / 2)
             domDeltaAz = deltaAz
-            domAltSlewTime = domDeltaAlt / self.params.domalt_maxspeed_rad
-            domAzSlewTime = domDeltaAz / self.params.domaz_maxspeed_rad
+            domAltSlewTime = domDeltaAlt / self.conf.dome.domalt_maxspeed_rad
+            domAzSlewTime = domDeltaAz / self.conf.dome.domaz_maxspeed_rad
             totDomTime2 = np.maximum(domAltSlewTime, domAzSlewTime)
 
             totDomTime = np.minimum(totDomTime1, totDomTime2)
@@ -310,13 +320,13 @@ class ObservatoryModel(object):
         else:
             # the above models a dome slit and dome creep. However, it appears that
             # SOCS requires the dome to slew exactly to each field and settle in az
-            domAltSlewTime = self._uamSlewTime(deltaAlt, self.params.domalt_maxspeed_rad,
-                                               self.params.domalt_accel_rad)
-            domAzSlewTime = self._uamSlewTime(deltaAz, self.params.domaz_maxspeed_rad,
-                                              self.params.domaz_accel_rad)
+            domAltSlewTime = self._uamSlewTime(deltaAlt, self.conf.dome.domalt_maxspeed_rad,
+                                               self.conf.dome.domalt_accel_rad)
+            domAzSlewTime = self._uamSlewTime(deltaAz, self.conf.dome.domaz_maxspeed_rad,
+                                              self.conf.dome.domaz_accel_rad)
             # Dome takes 1 second to settle in az
             domAzSlewTime = np.where(domAzSlewTime > 0,
-                                     domAzSlewTime + self.params.domaz_settletime,
+                                     domAzSlewTime + self.conf.dome.domaz_settletime,
                                      domAzSlewTime)
             totDomTime = np.maximum(domAltSlewTime, domAzSlewTime)
         # Find the max of the above for slew time.
@@ -324,284 +334,19 @@ class ObservatoryModel(object):
         # include filter change time if necessary
         filterChange = np.where(goal_filter != self.current_state.filter)
         slewTime[filterChange] = np.maximum(slewTime[filterChange],
-                                            self.params.filter_changetime)
+                                            self.conf.camera.filter_changetime)
         # Add closed loop optics correction
         # Find the limit where we must add the delay
-        cl_limit = self.params.optics_cl_altlimit[1]
-        cl_delay = self.params.optics_cl_delay[1]
+        cl_limit = self.conf.optics.optics_cl_altlimit[1]
+        cl_delay = self.conf.optics.optics_cl_delay[1]
         closeLoop = np.where(deltaAlt >= cl_limit)
         slewTime[closeLoop] += cl_delay
 
         # Mask min/max altitude limits so slewtime = np.nan
-        outsideLimits = np.where((alt_rad > self.params.telalt_maxpos_rad) |
-                                 (alt_rad < self.params.telalt_minpos_rad))
+        outsideLimits = np.where((alt_rad > self.conf.telescope.telalt_maxpos_rad) |
+                                 (alt_rad < self.conf.telescope.telalt_minpos_rad))
         slewTime[outsideLimits] = -1
         return slewTime
-
-    def configure(self, confdict):
-        """Configure the observatory model.
-
-        Parameters
-        ----------
-        confdict : dict
-            The configuration dictionary containing the parameters for
-            the observatory model.
-        """
-        self.configure_telescope(confdict)
-        self.configure_rotator(confdict)
-        self.configure_dome(confdict)
-        self.configure_optics(confdict)
-        self.configure_camera(confdict)
-        self.configure_slew(confdict)
-        self.configure_park(confdict)
-
-        self.current_state.mountedfilters = self.params.filter_init_mounted_list
-        self.current_state.unmountedfilters = self.params.filter_init_unmounted_list
-        self.park_state.mountedfilters = self.current_state.mountedfilters
-        self.park_state.unmountedfilters = self.current_state.unmountedfilters
-
-        self.reset()
-
-    def configure_camera(self, confdict):
-        """Configure the camera parameters.
-
-        Parameters
-        ----------
-        confdict : dict
-            The set of configuration parameters for the camera.
-        """
-        self.params.configure_camera(confdict)
-
-        self.log.log(self.log_level,
-                     "configure_camera: filter_changetime=%.1f" %
-                     (self.params.filter_changetime))
-        self.log.log(self.log_level,
-                     "configure_camera: readouttime=%.1f" %
-                     (self.params.readouttime))
-        self.log.log(self.log_level,
-                     "configure_camera: shuttertime=%.1f" %
-                     (self.params.shuttertime))
-        self.log.log(self.log_level,
-                     "configure_camera: filter_removable=%s" %
-                     (self.params.filter_removable_list))
-        self.log.log(self.log_level,
-                     "configure_camera: filter_max_changes_burst_num=%i" %
-                     (self.params.filter_max_changes_burst_num))
-        self.log.log(self.log_level,
-                     "configure_camera: filter_max_changes_burst_time=%.1f" %
-                     (self.params.filter_max_changes_burst_time))
-        self.log.log(self.log_level,
-                     "configure_camera: filter_max_changes_avg_num=%i" %
-                     (self.params.filter_max_changes_avg_num))
-        self.log.log(self.log_level,
-                     "configure_camera: filter_max_changes_avg_time=%.1f" %
-                     (self.params.filter_max_changes_avg_time))
-        self.log.log(self.log_level,
-                     "configure_camera: filter_init_mounted=%s" %
-                     (self.params.filter_init_mounted_list))
-        self.log.log(self.log_level,
-                     "configure_camera: filter_init_unmounted=%s" %
-                     (self.params.filter_init_unmounted_list))
-
-    def configure_dome(self, confdict):
-        """Configure the dome parameters.
-
-        Parameters
-        ----------
-        confdict : dict
-            The set of configuration parameters for the dome.
-        """
-        self.params.configure_dome(confdict)
-
-        self.log.log(self.log_level,
-                     "configure_dome: domalt_maxspeed=%.3f" %
-                     (math.degrees(self.params.domalt_maxspeed_rad)))
-        self.log.log(self.log_level,
-                     "configure_dome: domalt_accel=%.3f" %
-                     (math.degrees(self.params.domalt_accel_rad)))
-        self.log.log(self.log_level,
-                     "configure_dome: domalt_decel=%.3f" %
-                     (math.degrees(self.params.domalt_decel_rad)))
-        self.log.log(self.log_level,
-                     "configure_dome: domalt_freerange=%.3f" %
-                     (math.degrees(self.params.domalt_free_range)))
-        self.log.log(self.log_level,
-                     "configure_dome: domaz_maxspeed=%.3f" %
-                     (math.degrees(self.params.domaz_maxspeed_rad)))
-        self.log.log(self.log_level,
-                     "configure_dome: domaz_accel=%.3f" %
-                     (math.degrees(self.params.domaz_accel_rad)))
-        self.log.log(self.log_level,
-                     "configure_dome: domaz_decel=%.3f" %
-                     (math.degrees(self.params.domaz_decel_rad)))
-        self.log.log(self.log_level,
-                     "configure_dome: domaz_freerange=%.3f" %
-                     (math.degrees(self.params.domaz_free_range)))
-        self.log.log(self.log_level,
-                     "configure_dome: domaz_settletime=%.3f" %
-                     (self.params.domaz_settletime))
-
-    def configure_from_module(self, conf_file=None):
-        """Configure the observatory model from the module stored \
-           configuration.
-
-        Parameters
-        ----------
-        conf_file : str, optional
-            The configuration file to use.
-        """
-        if conf_file is None:
-            conf_file = os.path.join(os.path.dirname(__file__),
-                                     "observatory_model.conf")
-        conf_dict = read_conf_file(conf_file)
-        self.configure(conf_dict)
-
-    def configure_optics(self, confdict):
-        """Configure the optics parameters.
-
-        Parameters
-        ----------
-        confdict : dict
-            The set of configuration parameters for the optics.
-        """
-        self.params.configure_optics(confdict)
-
-        self.log.log(self.log_level,
-                     "configure_optics: optics_ol_slope=%.3f" %
-                     (self.params.optics_ol_slope))
-        self.log.log(self.log_level,
-                     "configure_optics: optics_cl_delay=%s" %
-                     (self.params.optics_cl_delay))
-        self.log.log(self.log_level,
-                     "configure_optics: optics_cl_altlimit=%s" %
-                     ([math.degrees(x) for x in self.params.optics_cl_altlimit]))
-
-    def configure_park(self, confdict):
-        """Configure the telescope park state parameters.
-
-        Parameters
-        ----------
-        confdict : dict
-            The set of configuration parameters for the telescope park state.
-        """
-        self.park_state.alt_rad = math.radians(confdict["park"]["telescope_altitude"])
-        self.park_state.az_rad = math.radians(confdict["park"]["telescope_azimuth"])
-        self.park_state.rot_rad = math.radians(confdict["park"]["telescope_rotator"])
-        self.park_state.telalt_rad = math.radians(confdict["park"]["telescope_altitude"])
-        self.park_state.telaz_rad = math.radians(confdict["park"]["telescope_azimuth"])
-        self.park_state.telrot_rad = math.radians(confdict["park"]["telescope_rotator"])
-        self.park_state.domalt_rad = math.radians(confdict["park"]["dome_altitude"])
-        self.park_state.domaz_rad = math.radians(confdict["park"]["dome_azimuth"])
-        self.park_state.filter = confdict["park"]["filter_position"]
-        self.park_state.mountedfilters = self.current_state.mountedfilters
-        self.park_state.unmountedfilters = self.current_state.unmountedfilters
-        self.park_state.tracking = False
-
-        self.log.log(self.log_level,
-                     "configure_park: park_telalt_rad=%.3f" % (self.park_state.telalt_rad))
-        self.log.log(self.log_level,
-                     "configure_park: park_telaz_rad=%.3f" % (self.park_state.telaz_rad))
-        self.log.log(self.log_level,
-                     "configure_park: park_telrot_rad=%.3f" % (self.park_state.telrot_rad))
-        self.log.log(self.log_level,
-                     "configure_park: park_domalt_rad=%.3f" % (self.park_state.domalt_rad))
-        self.log.log(self.log_level,
-                     "configure_park: park_domaz_rad=%.3f" % (self.park_state.domaz_rad))
-        self.log.log(self.log_level,
-                     "configure_park: park_filter=%s" % (self.park_state.filter))
-
-    def configure_rotator(self, confdict):
-        """Configure the telescope rotator parameters.
-
-        Parameters
-        ----------
-        confdict : dict
-            The set of configuration parameters for the telescope rotator.
-        """
-        self.params.configure_rotator(confdict)
-
-        self.log.log(self.log_level,
-                     "configure_rotator: telrot_minpos=%.3f" %
-                     (math.degrees(self.params.telrot_minpos_rad)))
-        self.log.log(self.log_level,
-                     "configure_rotator: telrot_maxpos=%.3f" %
-                     (math.degrees(self.params.telrot_maxpos_rad)))
-        self.log.log(self.log_level,
-                     "configure_rotator: telrot_maxspeed=%.3f" %
-                     (math.degrees(self.params.telrot_maxspeed_rad)))
-        self.log.log(self.log_level,
-                     "configure_rotator: telrot_accel=%.3f" %
-                     (math.degrees(self.params.telrot_accel_rad)))
-        self.log.log(self.log_level,
-                     "configure_rotator: telrot_decel=%.3f" %
-                     (math.degrees(self.params.telrot_decel_rad)))
-        self.log.log(self.log_level,
-                     "configure_rotator: telrot_filterchangepos=%.3f" %
-                     (math.degrees(self.params.telrot_filterchangepos_rad)))
-        self.log.log(self.log_level,
-                     "configure_rotator: rotator_followsky=%s" %
-                     (self.params.rotator_followsky))
-        self.log.log(self.log_level,
-                     "configure_rotator: rotator_resumeangle=%s" %
-                     (self.params.rotator_resumeangle))
-
-    def configure_slew(self, confdict):
-        """Configure the slew parameters.
-
-        Parameters
-        ----------
-        confdict : dict
-            The set of configuration parameters for the slew.
-        """
-        self.params.configure_slew(confdict, self.activities)
-
-        for activity in self.activities:
-            self.log.log(self.log_level, "configure_slew: prerequisites[%s]=%s" %
-                         (activity, self.params.prerequisites[activity]))
-
-    def configure_telescope(self, confdict):
-        """Configure the telescope parameters.
-
-        Parameters
-        ----------
-        confdict : dict
-            The set of configuration parameters for the telescope.
-        """
-        self.params.configure_telescope(confdict)
-
-        self.log.log(self.log_level,
-                     "configure_telescope: telalt_minpos=%.3f" %
-                     (math.degrees(self.params.telalt_minpos_rad)))
-        self.log.log(self.log_level,
-                     "configure_telescope: telalt_maxpos=%.3f" %
-                     (math.degrees(self.params.telalt_maxpos_rad)))
-        self.log.log(self.log_level,
-                     "configure_telescope: telaz_minpos=%.3f" %
-                     (math.degrees(self.params.telaz_minpos_rad)))
-        self.log.log(self.log_level,
-                     "configure_telescope: telaz_maxpos=%.3f" %
-                     (math.degrees(self.params.telaz_maxpos_rad)))
-        self.log.log(self.log_level,
-                     "configure_telescope: telalt_maxspeed=%.3f" %
-                     (math.degrees(self.params.telalt_maxspeed_rad)))
-        self.log.log(self.log_level,
-                     "configure_telescope: telalt_accel=%.3f" %
-                     (math.degrees(self.params.telalt_accel_rad)))
-        self.log.log(self.log_level,
-                     "configure_telescope: telalt_decel=%.3f" %
-                     (math.degrees(self.params.telalt_decel_rad)))
-        self.log.log(self.log_level,
-                     "configure_telescope: telaz_maxspeed=%.3f" %
-                     (math.degrees(self.params.telaz_maxspeed_rad)))
-        self.log.log(self.log_level,
-                     "configure_telescope: telaz_accel=%.3f" %
-                     (math.degrees(self.params.telaz_accel_rad)))
-        self.log.log(self.log_level,
-                     "configure_telescope: telaz_decel=%.3f" %
-                     (math.degrees(self.params.telaz_decel_rad)))
-        self.log.log(self.log_level,
-                     "configure_telescope: mount_settletime=%.3f" %
-                     (self.params.mount_settletime))
 
     def get_closest_angle_distance(self, target_rad, current_abs_rad,
                                    min_abs_rad=None, max_abs_rad=None):
@@ -812,7 +557,8 @@ class ObservatoryModel(object):
         return targetstate
 
     def get_deep_drilling_time(self, target):
-        """Get the observing time for a deep drilling target.
+        """Get the observing time for a deep drilling target or sequence of
+        exposures which do not slew the telescope.
 
         Parameters
         ----------
@@ -825,9 +571,9 @@ class ObservatoryModel(object):
             The total observation time.
         """
         ddtime = target.dd_exptime + \
-            target.dd_exposures * self.params.shuttertime + \
-            max(target.dd_exposures - 1, 0) * self.params.readouttime + \
-            target.dd_filterchanges * (self.params.filter_changetime - self.params.readouttime)
+            target.dd_exposures * self.conf.camera.shuttertime + \
+            max(target.dd_exposures - 1, 0) * self.conf.camera.readouttime + \
+            target.dd_filterchanges * (self.conf.camera.filter_changetime - self.conf.camera.readouttime)
 
         return ddtime
 
@@ -853,7 +599,7 @@ class ObservatoryModel(object):
         """
         activity_delay = self.function_get_delay_for[activity](targetstate, initstate)
 
-        prereq_list = self.params.prerequisites[activity]
+        prereq_list = self.prerequisites[activity]
 
         longest_previous_delay = 0.0
         longest_prereq = ""
@@ -887,10 +633,10 @@ class ObservatoryModel(object):
             The slew delay for the domalt activity.
         """
         distance = targetstate.domalt_rad - initstate.domalt_rad
-        maxspeed = self.params.domalt_maxspeed_rad
-        accel = self.params.domalt_accel_rad
-        decel = self.params.domalt_decel_rad
-        free_range = self.params.domalt_free_range
+        maxspeed = self.conf.dome.domalt_maxspeed_rad
+        accel = self.conf.dome.domalt_accel_rad
+        decel = self.conf.dome.domalt_decel_rad
+        free_range = self.conf.dome.domalt_free_range
 
         (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel, free_range)
         targetstate.domalt_peakspeed_rad = peakspeed
@@ -917,10 +663,10 @@ class ObservatoryModel(object):
             The slew delay for the domaz activity.
         """
         distance = targetstate.domaz_rad - initstate.domaz_rad
-        maxspeed = self.params.domaz_maxspeed_rad
-        accel = self.params.domaz_accel_rad
-        decel = self.params.domaz_decel_rad
-        free_range = self.params.domaz_free_range
+        maxspeed = self.conf.dome.domaz_maxspeed_rad
+        accel = self.conf.dome.domaz_accel_rad
+        decel = self.conf.dome.domaz_decel_rad
+        free_range = self.conf.dome.domaz_free_range
 
         (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel, free_range)
         targetstate.domaz_peakspeed_rad = peakspeed
@@ -949,7 +695,7 @@ class ObservatoryModel(object):
         distance = abs(targetstate.domaz_rad - initstate.domaz_rad)
 
         if distance > 1e-6:
-            delay = self.params.domaz_settletime
+            delay = self.conf.dome.domaz_settletime
         else:
             delay = 0
 
@@ -997,7 +743,7 @@ class ObservatoryModel(object):
         """
         if targetstate.filter != initstate.filter:
             # filter change needed
-            delay = self.params.filter_changetime
+            delay = self.conf.camera.filter_changetime
         else:
             delay = 0.0
 
@@ -1022,7 +768,7 @@ class ObservatoryModel(object):
         float
             The slew delay for the readout activity.
         """
-        return self.params.readouttime
+        return self.conf.camera.readouttime
 
     def get_delay_for_telalt(self, targetstate, initstate):
         """Calculate slew delay for telalt activity.
@@ -1044,9 +790,9 @@ class ObservatoryModel(object):
             The slew delay for the telalt activity.
         """
         distance = targetstate.telalt_rad - initstate.telalt_rad
-        maxspeed = self.params.telalt_maxspeed_rad
-        accel = self.params.telalt_accel_rad
-        decel = self.params.telalt_decel_rad
+        maxspeed = self.conf.telescope.telalt_maxspeed_rad
+        accel = self.conf.telescope.telalt_accel_rad
+        decel = self.conf.telescope.telalt_decel_rad
 
         (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel)
         targetstate.telalt_peakspeed_rad = peakspeed
@@ -1073,9 +819,9 @@ class ObservatoryModel(object):
             The slew delay for the telaz activity.
         """
         distance = targetstate.telaz_rad - initstate.telaz_rad
-        maxspeed = self.params.telaz_maxspeed_rad
-        accel = self.params.telaz_accel_rad
-        decel = self.params.telaz_decel_rad
+        maxspeed = self.conf.telescope.telaz_maxspeed_rad
+        accel = self.conf.telescope.telaz_accel_rad
+        decel = self.conf.telescope.telaz_decel_rad
 
         (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel)
         targetstate.telaz_peakspeed_rad = peakspeed
@@ -1104,8 +850,9 @@ class ObservatoryModel(object):
         distance = abs(targetstate.telalt_rad - initstate.telalt_rad)
 
         delay = 0.0
-        for k, cl_delay in enumerate(self.params.optics_cl_delay):
-            if self.params.optics_cl_altlimit[k] <= distance < self.params.optics_cl_altlimit[k + 1]:
+        for k, cl_delay in enumerate(self.conf.optics.optics_cl_delay):
+            if self.conf.optics.optics_cl_altlimit[k] <= distance < \
+                    self.conf.optics.optics_cl_altlimit[k + 1]:
                 delay = cl_delay
                 break
 
@@ -1133,7 +880,7 @@ class ObservatoryModel(object):
         distance = abs(targetstate.telalt_rad - initstate.telalt_rad)
 
         if distance > 1e-6:
-            delay = distance * self.params.optics_ol_slope
+            delay = distance * self.conf.optics.optics_ol_slope
         else:
             delay = 0
 
@@ -1159,9 +906,9 @@ class ObservatoryModel(object):
             The slew delay for the telrot activity.
         """
         distance = targetstate.telrot_rad - initstate.telrot_rad
-        maxspeed = self.params.telrot_maxspeed_rad
-        accel = self.params.telrot_accel_rad
-        decel = self.params.telrot_decel_rad
+        maxspeed = self.conf.telescope.telrot_maxspeed_rad
+        accel = self.conf.telescope.telrot_accel_rad
+        decel = self.conf.telescope.telrot_decel_rad
 
         (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel)
         targetstate.telrot_peakspeed_rad = peakspeed
@@ -1191,7 +938,7 @@ class ObservatoryModel(object):
             abs(targetstate.telaz_rad - initstate.telaz_rad)
 
         if distance > 1e-6:
-            delay = self.params.mount_settletime
+            delay = self.conf.telescope.mount_settletime
         else:
             delay = 0
 
@@ -1205,7 +952,7 @@ class ObservatoryModel(object):
         -------
         float
         """
-        avg_num = self.params.filter_max_changes_avg_num
+        avg_num = self.conf.camera.filter_max_changes_avg_num
         if len(self.filter_changes_list) >= avg_num:
             deltatime = self.current_state.time - self.filter_changes_list[-avg_num]
         else:
@@ -1220,7 +967,7 @@ class ObservatoryModel(object):
         -------
         float
         """
-        burst_num = self.params.filter_max_changes_burst_num
+        burst_num = self.conf.camera.filter_max_changes_burst_num
         if len(self.filter_changes_list) >= burst_num:
             deltatime = self.current_state.time - self.filter_changes_list[-burst_num]
         else:
@@ -1255,12 +1002,12 @@ class ObservatoryModel(object):
         return len(self.filter_changes_list)
 
     def get_slew_delay(self, target):
-        """Calculate the slew delay based on the given target.
+        """Calculate the slew delay based on the given desired target position.
 
         Parameters
         ----------
-        target : :class:`.Target`
-            An instance of a target for slew calculation.
+        target : :class:`.ObservatoryPosition`
+            An instance of a target position for slew calculation.
 
         Returns
         -------
@@ -1273,19 +1020,16 @@ class ObservatoryModel(object):
             if not self.is_filter_change_allowed_for(target.filter):
                 return -1.0, self.current_state.fail_value_table["filter"]
 
-        targetposition = self.radecang2position(self.dateprofile,
+        targetposition = self.radecang2position(self.time,
                                                 target.ra_rad,
                                                 target.dec_rad,
                                                 target.ang_rad,
                                                 target.filter)
-        if not self.params.rotator_followsky:
-            #override rotator position with current telrot
-            targetposition.rot_rad = self.current_state.telrot_rad
 
         # check if altitude is possible
-        if targetposition.alt_rad < self.params.telalt_minpos_rad:
+        if targetposition.alt_rad < self.conf.telescope.telalt_minpos_rad:
             return -1.0, self.current_state.fail_value_table["altEmin"]
-        if targetposition.alt_rad > self.params.telalt_maxpos_rad:
+        if targetposition.alt_rad > self.conf.telescope.telalt_maxpos_rad:
             return -1.0, self.current_state.fail_value_table["altEmax"]
 
         targetstate = self.get_closest_state(targetposition)
@@ -1344,15 +1088,15 @@ class ObservatoryModel(object):
         bool
             True is filter change is allowed, else False.
         """
-        burst_num = self.params.filter_max_changes_burst_num
+        burst_num = self.conf.camera.filter_max_changes_burst_num
         if len(self.filter_changes_list) >= burst_num:
             deltatime = self.current_state.time - self.filter_changes_list[-burst_num]
-            if deltatime >= self.params.filter_max_changes_burst_time:
+            if deltatime >= self.conf.camera.filter_max_changes_burst_time:
                 # burst time allowed
-                avg_num = self.params.filter_max_changes_avg_num
+                avg_num = self.conf.camera.filter_max_changes_avg_num
                 if len(self.filter_changes_list) >= avg_num:
                     deltatime = self.current_state.time - self.filter_changes_list[-avg_num]
-                    if deltatime >= self.params.filter_max_changes_avg_time:
+                    if deltatime >= self.conf.camera.filter_max_changes_avg_time:
                         # avg time allowed
                         allowed = True
                     else:
@@ -1397,8 +1141,8 @@ class ObservatoryModel(object):
         """
         self.slew(target)
         visit_time = sum(target.exp_times) + \
-            target.num_exp * self.params.shuttertime + \
-            max(target.num_exp - 1, 0) * self.params.readouttime
+            target.num_exp * self.conf.camera.shuttertime + \
+            max(target.num_exp - 1, 0) * self.conf.camera.readouttime
         self.update_state(self.current_state.time + visit_time)
 
     def park(self):
@@ -1409,15 +1153,52 @@ class ObservatoryModel(object):
         self.park_state.time = self.current_state.time + slew_delay
         self.current_state.set(self.park_state)
         self.update_state(self.park_state.time)
-        self.park_state.time = 0.0
 
-    def radec2altazpa(self, dateprofile, ra_rad, dec_rad):
+    def calcLst(self, time):
+        """Calculate local sidereal time (in radians) for a given time.
+
+        Parameters
+        ----------
+        time : astropy.time.Time
+
+        Returns
+        -------
+        float
+            local sidereal time
+        """
+        lst = pal.gmst(time.ut1.mjd) + self.site.longitude_rad
+        lst = lst % (2.0 * math.pi)
+        return lst
+
+    def altaz2radecpa(self, lst_rad, alt_rad, az_rad):
+        """Converts alt, az coordinates into ra, dec for the given time.
+
+        Parameters
+        ----------
+        lst_rad : float
+            The local sidereal time in radians
+        alt_rad : float
+            The altitude in radians
+        az_rad : float
+            The azimuth in radians
+
+        Returns
+        -------
+        tuple(float, float, float)
+            (right ascension in radians, declination in radians, parallactic angle in radians)
+        """
+        (ha_rad, dec_rad) = pal.dh2e(az_rad, alt_rad, self.site.latitude_rad)
+        pa_rad = divmod(pal.pa(ha_rad, dec_rad, self.site.latitude_rad), TWOPI)[1]
+        ra_rad = divmod(lst_rad - ha_rad, TWOPI)[1]
+        return (ra_rad, dec_rad, pa_rad)
+
+    def radec2altazpa(self, lst_rad, ra_rad, dec_rad):
         """Converts ra, de coordinates into alt, az for given time.
 
         Parameters
         ----------
-        dateprofile : lsst.ts.dateloc.DateProfile
-            Instance containing the time information.
+        lst_rad : float
+            The local sidereal time in radians
         ra_rad : float
             The right ascension in radians
         dec_rad : float
@@ -1429,22 +1210,19 @@ class ObservatoryModel(object):
             (altitude in radians, azimuth in radians, parallactic angle in
             radians)
         """
-        lst_rad = dateprofile.lst_rad
         ha_rad = lst_rad - ra_rad
-
-        (az_rad, alt_rad) = pal.de2h(ha_rad, dec_rad, self.location.latitude_rad)
-        pa_rad = divmod(pal.pa(ha_rad, dec_rad, self.location.latitude_rad), TWOPI)[1]
-
+        (az_rad, alt_rad) = pal.de2h(ha_rad, dec_rad, self.site.latitude_rad)
+        pa_rad = divmod(pal.pa(ha_rad, dec_rad, self.site.latitude_rad), TWOPI)[1]
         return (alt_rad, az_rad, pa_rad)
 
-    def radecang2position(self, dateprofile, ra_rad, dec_rad, ang_rad, band_filter):
+    def radecang2position(self, time, ra_rad, dec_rad, ang_rad, band_filter):
         """Convert current time, sky location and filter into observatory\
            position.
 
         Parameters
         ----------
-        dateprofile : lsst.ts.dateloc.DateProfile
-            The instance holding the current time information.
+        time : astropy.time.Time
+            The current time.
         ra_rad : float
             The current right ascension (radians).
         dec_rad : float
@@ -1459,26 +1237,14 @@ class ObservatoryModel(object):
         :class:`.ObservatoryPosition`
             The observatory position information from inputs.
         """
-        (alt_rad, az_rad, pa_rad) = self.radec2altazpa(dateprofile, ra_rad, dec_rad)
+        (alt_rad, az_rad, pa_rad) = self.radec2altazpa(self.calcLst(time), ra_rad, dec_rad)
 
-        position = ObservatoryPosition()
-        position.time = dateprofile.timestamp
-        position.tracking = True
-        position.ra_rad = ra_rad
-        position.dec_rad = dec_rad
-        position.ang_rad = ang_rad
-        position.filter = band_filter
-        position.alt_rad = alt_rad
-        position.az_rad = az_rad
-        position.pa_rad = pa_rad
-        position.rot_rad = divmod(pa_rad - ang_rad, TWOPI)[1]
-
+        position = ObservatoryPosition(time=time, tracking=True,
+                                       ra_rad=ra_rad, dec_rad=dec_rad, ang_rad=ang_rad,
+                                       band_filter=band_filter,
+                                       alt_rad=alt_rad, az_rad=az_rad, pa_rad=pa_rad,
+                                       rot_rad=divmod(pa_rad - ang_rad, TWOPI)[1])
         return position
-
-    def reset(self):
-        """Reset the observatory to the parking state.
-        """
-        self.set_state(self.park_state)
 
     def set_state(self, new_state):
         """Set observatory state from another state.
@@ -1492,7 +1258,7 @@ class ObservatoryModel(object):
             self.filter_changes_list.append(new_state.time)
 
         self.current_state.set(new_state)
-        self.dateprofile.update(new_state.time)
+        self.time.update(new_state.time)
 
     def slew(self, target):
         """Slew the observatory to the given target location.
@@ -1511,7 +1277,7 @@ class ObservatoryModel(object):
         Parameters
         ----------
         time : float
-            The UTC timestamp of the request.
+            The astropy.time.Time of the request.
         alt_rad : float
             The altitude (radians) to slew to.
         az_rad : float
@@ -1524,14 +1290,9 @@ class ObservatoryModel(object):
         self.update_state(time)
         time = self.current_state.time
 
-        targetposition = ObservatoryPosition()
-        targetposition.time = time
-        targetposition.tracking = False
-        targetposition.alt_rad = alt_rad
-        targetposition.az_rad = az_rad
-        targetposition.rot_rad = rot_rad
-        targetposition.filter = band_filter
-
+        targetposition = ObservatoryPosition(time=time, alt_rad=alt_rad, az_rad=az_rad,
+                                             rot_rad=rot_rad, band_filter=band_filter,
+                                             tracking=False)
         self.slew_to_position(targetposition)
 
     def slew_radec(self, time, ra_rad, dec_rad, ang_rad, filter):
@@ -1553,9 +1314,7 @@ class ObservatoryModel(object):
         self.update_state(time)
         time = self.current_state.time
 
-        targetposition = self.radecang2position(self.dateprofile, ra_rad, dec_rad, ang_rad, filter)
-        if not self.params.rotator_followsky:
-            targetposition.rot_rad = self.current_state.telrot_rad
+        targetposition = self.radecang2position(time, ra_rad, dec_rad, ang_rad, filter)
 
         self.slew_to_position(targetposition)
 
@@ -1582,8 +1341,7 @@ class ObservatoryModel(object):
 
         Parameters
         ----------
-        time : float
-            The UTC timestamp.
+        time : astropy.time.Time
         """
         if time < self.current_state.time:
             time = self.current_state.time
@@ -1596,8 +1354,7 @@ class ObservatoryModel(object):
 
         Parameters
         ----------
-        time : float
-            The UTC timestamp.
+        time : astropy.time.Time
         """
         if time < self.current_state.time:
             time = self.current_state.time
@@ -1605,7 +1362,7 @@ class ObservatoryModel(object):
             self.update_state(time)
             self.current_state.tracking = False
 
-    def swap_filter(self, filter_to_unmount):
+    def mount_filter(self, filter_to_unmount):
         """Perform a filter swap with the given filter.
 
         Parameters
@@ -1622,7 +1379,7 @@ class ObservatoryModel(object):
             self.park_state.mountedfilters = self.current_state.mountedfilters
             self.park_state.unmountedfilters = self.current_state.unmountedfilters
         else:
-            self.log.info("swap_filter: REJECTED filter %s is not mounted" %
+            self.log.info("mount_filter: REJECTED filter %s is not mounted" %
                           (filter_to_unmount))
 
     def update_state(self, time):
@@ -1630,16 +1387,15 @@ class ObservatoryModel(object):
 
         Parameters
         ----------
-        time : float
-            A UTC timestamp for updating the observatory state.
+        time : astropy.time.Time
         """
         if time < self.current_state.time:
             time = self.current_state.time
-        self.dateprofile.update(time)
+        self.time = time
 
         if self.current_state.tracking:
 
-            targetposition = self.radecang2position(self.dateprofile,
+            targetposition = self.radecang2position(time,
                                                     self.current_state.ra_rad,
                                                     self.current_state.dec_rad,
                                                     self.current_state.ang_rad,
@@ -1660,7 +1416,7 @@ class ObservatoryModel(object):
             self.current_state.domalt_rad = targetstate.domalt_rad
             self.current_state.domaz_rad = targetstate.domaz_rad
         else:
-            (ra_rad, dec_rad, pa_rad) = self.altaz2radecpa(self.dateprofile,
+            (ra_rad, dec_rad, pa_rad) = self.altaz2radecpa(self.calcLst(time),
                                                            self.current_state.alt_rad,
                                                            self.current_state.az_rad)
             self.current_state.time = time

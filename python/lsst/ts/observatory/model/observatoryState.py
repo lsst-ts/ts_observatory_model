@@ -1,35 +1,35 @@
 import math
-from astropy.time import Time
+from lsst.ts.observatory.model import ObservatoryPosition
 
 
 __all__ = ["ObservatoryState"]
 
 
-class ObservatoryState(object):
-    """A class describing a complete observatory state (telescope, dome, camera positions and peak speeds).
+class ObservatoryState(ObservatoryPosition):
+    """Class for collecting the current state of the observatory.
 
     Parameters
     ----------
     time : astropy.time.Time
-        The time for the telescope state.
+        The time for the given pointing position information.
     ra_rad : float
-        The right ascension (radians) for the pointing.
+        The right ascension (radians) for the pointing position.
     dec_rad : float
-        The declination (radians) for the pointing.
+        The declination (radians) for the pointing position.
     ang_rad : float
-        ??
+        The position angle (radians) of the pointing (angle between y & N)
     band_filter : str
-        The filter currently in use.
+        The band filter being used during the pointing.
     tracking : bool
-        The tracking state of the observatory.
+        The tracking state of the pointing.
     alt_rad : float
         The altitude (radians) of the pointing.
     az_rad : float
         The azimuth (radians) of the pointing.
     pa_rad : float
-        The parallactic angle (radians) of the pointing.
+        The parallactic angle (radians) of the pointing. (btwn up & N)
     rot_rad : float
-        ??
+        The rotator angle (radians) of the pointing (between y & up).
     telalt_rad : float
         The altitude (radians) of the telescope for the given state.
     telaz_rad : float
@@ -44,6 +44,18 @@ class ObservatoryState(object):
         The list of band filters currently mounted for the given state.
     unmountedfilters : list[str]
         The list of band filters currently unmounted for the given state.
+    fail_record : dict[str:int]
+        A dictionary of string keys that represent reason of failure, and
+        and integer to record the count of that failure.
+    fail_state : int
+        A unique integer to define the type of target failure that occured.
+    fail_value_table : dict[str:int]
+        Table used to calculate the fail state.
+        ___  ___  ___  ___  ___  ___
+         |    |    |    |    |    |
+        rot  rot  az   az   alt  alt
+        min  max  max  min  max  min
+
 
     Note: It seems overkill to specify RA/Dec/ang, as well as alt/az/pa/rot
     The reason why both are specified is tied to whether tracking is True or False --
@@ -52,25 +64,17 @@ class ObservatoryState(object):
     These updates are not done here, but in the ObservatoryModel.
     """
 
-    def __init__(self, time=0.0,
-                 ra_rad=0.0, dec_rad=0.0, ang_rad=0.0,
-                 band_filter='r',
-                 tracking=False,
-                 alt_rad=1.5, az_rad=0.0, pa_rad=0.0, rot_rad=0.0,
-                 telalt_rad=1.5, telaz_rad=0.0, telrot_rad=0.0,
-                 domalt_rad=1.5, domaz_rad=0.0,
+    def __init__(self, time=0.0, ra_rad=0.0, dec_rad=0.0, ang_rad=0.0,
+                 band_filter='r', tracking=False, alt_rad=1.5, az_rad=0.0,
+                 pa_rad=0.0, rot_rad=0.0, telalt_rad=1.5, telaz_rad=0.0,
+                 telrot_rad=0.0, domalt_rad=1.5, domaz_rad=0.0,
                  mountedfilters=['g', 'r', 'i', 'z', 'y'],
                  unmountedfilters=['u']):
-        self.time = time
-        self.ra_rad = ra_rad
-        self.dec_rad = dec_rad
-        self.ang_rad = ang_rad
-        self.filter = band_filter
-        self.tracking = tracking
-        self.alt_rad = alt_rad
-        self.az_rad = az_rad
-        self.pa_rad = pa_rad
-        self.rot_rad = rot_rad
+        """Initialize the class.
+        """
+        ObservatoryPosition.__init__(self, time, ra_rad, dec_rad, ang_rad,
+                                     band_filter, tracking, alt_rad, az_rad,
+                                     pa_rad, rot_rad)
 
         self.telalt_rad = telalt_rad
         self.telalt_peakspeed_rad = 0
@@ -84,47 +88,17 @@ class ObservatoryState(object):
         self.domaz_peakspeed_rad = 0
         self.mountedfilters = list(mountedfilters)
         self.unmountedfilters = list(unmountedfilters)
+        self.fail_record = {}
+        self.fail_state = 0
+        self.fail_value_table = {"altEmax": 1, "altEmin": 2,
+                                 "azEmax": 4, "azEmin" : 8,
+                                 "rotEmax": 16, "rotEmin": 32, "filter": 64}
 
-    @property
-    def mjd_time(self):
-        """float: Return the MJD TAI time of the pointing position."""
-        return self.time.tai.mjd
-
-    @property
-    def alt(self):
-        """float: Return the altitude (degrees) of the pointing position."""
-        return math.degrees(self.alt_rad)
-
-    @property
-    def ang(self):
-        return math.degrees(self.ang_rad)
-
-    @property
-    def az(self):
-        """float: Return the azimuth (degrees) of the pointing position."""
-        return math.degrees(self.az_rad)
-
-    @property
-    def dec(self):
-        """float: Return the declination (degrees) of the pointing
-                  position."""
-        return math.degrees(self.dec_rad)
-
-    @property
-    def pa(self):
-        """float: Return the parallactic angle (degrees) of the pointing
-                  position."""
-        return math.degrees(self.pa_rad)
-
-    @property
-    def ra(self):
-        """float: Return the right ascension (degrees) of the pointing
-                  position."""
-        return math.degrees(self.ra_rad)
-
-    @property
-    def rot(self):
-        return math.degrees(self.rot_rad)
+    def __str__(self):
+        """str: The string representation of the instance."""
+        return "%s telaz=%.3f telrot=%.3f mounted=%s unmounted=%s" % \
+               (ObservatoryPosition.__str__(self), self.telaz, self.telrot,
+                self.mountedfilters, self.unmountedfilters)
 
     @property
     def domalt(self):
@@ -180,15 +154,6 @@ class ObservatoryState(object):
         """float: Return the telescope rotator peak speed (degrees/sec)."""
         return math.degrees(self.telrot_peakspeed_rad)
 
-    def __str__(self):
-        state = "t=%.1f ra=%.3f dec=%.3f ang=%.3f filter=%s track=%s alt=%.3f "\
-                "az=%.3f pa=%.3f rot=%.3f" % (self.time, self.ra, self.dec, self.ang,
-                                              self.filter, self.tracking, self.alt, self.az,
-                                              self.pa, self.rot)
-        state += " telaz=%.3f telrot=%.3f mounted=%s unmounted=%s"\
-                 % (self.telaz, self.telrot, self.mountedfilters, self.unmountedfilters)
-        return state
-
     def set(self, newstate):
         """Override the current state information with new values.
 
@@ -202,7 +167,7 @@ class ObservatoryState(object):
         self.ra_rad = newstate.ra_rad
         self.dec_rad = newstate.dec_rad
         self.ang_rad = newstate.ang_rad
-        self.filter = newstate.filter
+        self.band_filter = newstate.band_filter
         self.tracking = newstate.tracking
         self.alt_rad = newstate.alt_rad
         self.az_rad = newstate.az_rad
@@ -222,17 +187,38 @@ class ObservatoryState(object):
         self.mountedfilters = list(newstate.mountedfilters)
         self.unmountedfilters = list(newstate.unmountedfilters)
 
-    def mount_filter(self, filter_to_mount, filter_to_unmount):
-        """Swap the filters mounted on the camera.
+    def set_position(self, newposition):
+        """Override the current position information with new values.
+
+        This function only overrides the position information in the current
+        state. Telescope and dome position information are filled with the
+        overriding position information. All peak speeds are set to zero.
+        Also, the mounted and unmounted filter lists are unchanged.
 
         Parameters
         ----------
-        filter_to_mount : str
-            The name of the band filter to mount.
-        filter_to_unmount : str
-            The name of the band filter to unmount.
+        newposition : :class:`.ObservatoryState`
+            A new observatory state instance from which to set the current
+            state information.
         """
-        self.mountedfilters.remove(filter_to_unmount)
-        self.unmountedfilters.remove(filter_to_mount)
-        self.mountedfilters.append(filter_to_mount)
-        self.unmountedfilters.append(filter_to_unmount)
+        self.time = newposition.time
+        self.ra_rad = newposition.ra_rad
+        self.dec_rad = newposition.dec_rad
+        self.ang_rad = newposition.ang_rad
+        self.band_filter = newposition.band_filter
+        self.tracking = newposition.tracking
+        self.alt_rad = newposition.alt_rad
+        self.az_rad = newposition.az_rad
+        self.pa_rad = newposition.pa_rad
+        self.rot_rad = newposition.rot_rad
+
+        self.telalt_rad = newposition.alt_rad
+        self.telalt_peakspeed_rad = 0
+        self.telaz_rad = newposition.az_rad
+        self.telaz_peakspeed_rad = 0
+        self.telrot_rad = newposition.rot_rad
+        self.telrot_peakspeed_rad = 0
+        self.domalt_rad = newposition.alt_rad
+        self.domalt_peakspeed_rad = 0
+        self.domaz_rad = newposition.az_rad
+        self.domaz_peakspeed_rad = 0
