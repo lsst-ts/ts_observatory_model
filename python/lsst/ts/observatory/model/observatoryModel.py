@@ -51,12 +51,15 @@ class ObservatoryModel(object):
                            "readout",
                            "exposures"]
         # Define general prereqs for each activity.
+        # Use the fact that the slew config defines all prereqs for all activities.
         self.prerequisites = {}
+        for activity, prereq in self.conf.slew.iteritems():
+            act = activity.split('_')[1]
+            self.prerequisites[act] = prereq
+        # Check all activities listed.
         for activity in self.activities:
-            key = "prereq_" + activity
-            self.prerequisites[activity] = list(self.conf.slew.prereq_["slew"][key])
-            return
-            XXXX
+            if activity not in self.prerequisites:
+                raise ValueError('Missing activity %s from slew config' % activity)
         # Define functions, delay, and longest_preqreq for each activity.
         self.function_get_delay_for = {}
         self.delay_for = {}
@@ -69,8 +72,8 @@ class ObservatoryModel(object):
         self.lastslew_delays_dict = {}
         self.lastslew_criticalpath = []
         self.filter_changes_list = []
-        # Set the telescope to the park state.
-        self.park()
+        # Set the telescope state to the park state.
+        self.reset()
 
     def __str__(self):
         """str: The string representation of the model."""
@@ -107,7 +110,7 @@ class ObservatoryModel(object):
         confdict : dict
             The set of configuration parameters for the telescope park state.
         """
-        # band_filter for the park state is the filter that should be in place during a filter change.
+        # filterband for the park state is the filter that should be in place during a filter change.
         self.park_state = ObservatoryState(time = self.current_state.time,
                                            alt_rad = math.radians(self.conf.park.telescope_altitude),
                                            az_rad = math.radians(self.conf.park.telescope_azimuth),
@@ -117,7 +120,7 @@ class ObservatoryModel(object):
                                            telrot_rad = math.radians(self.conf.park.telescope_rotator),
                                            domalt_rad = math.radians(self.conf.park.dome_altitude),
                                            domaz_rad = math.radians(self.conf.park.dome_azimuth),
-                                           band_filter = self.conf.park.filter_position,
+                                           filterband = self.conf.park.filter_position,
                                            mountedfilters = self.current_state.mountedfilters,
                                            unmountedfilters = self.current_state.unmountedfilters,
                                            tracking=False)
@@ -266,23 +269,23 @@ class ObservatoryModel(object):
         deltaAz = np.minimum(deltaAz, np.abs(deltaAz - 2 * np.pi))
 
         # Calculate how long the telescope will take to slew to this position.
-        telAltSlewTime = self._uamSlewTime(deltaAlt, self.conf.telescope.telalt_maxspeed_rad,
-                                           self.conf.telescope.telalt_accel_rad )
-        telAzSlewTime = self._uamSlewTime(deltaAz, self.conf.telescope.telaz_maxspeed_rad,
-                                          self.conf.telescope.telaz_accel_rad)
+        telAltSlewTime = self._uamSlewTime(deltaAlt, self.conf.telrad['altitude_maxspeed_rad'],
+                                           self.conf.telrad['altitude_accel_rad'])
+        telAzSlewTime = self._uamSlewTime(deltaAz, self.conf.telrad['azimuth_maxspeed_rad'],
+                                          self.conf.telrad['azimuth_accel_rad'])
         totTelTime = np.maximum(telAltSlewTime, telAzSlewTime)
         # Time for open loop optics correction
-        olTime = deltaAlt / self.conf.optics.optics_ol_slope
+        olTime = deltaAlt / self.conf.optics.tel_optics_ol_slope
         totTelTime += olTime
         # Add time for telescope settle.
         settleAndOL = np.where(totTelTime > 0)
-        totTelTime[settleAndOL] += np.maximum(0, self.conf.telescope.mount_settletime - olTime[settleAndOL])
+        totTelTime[settleAndOL] += np.maximum(0, self.conf.telescope.settle_time - olTime[settleAndOL])
         # And readout puts a floor on tel time
-        totTelTime = np.maximum(self.conf.camera.readouttime, totTelTime)
+        totTelTime = np.maximum(self.conf.camera.readout_time, totTelTime)
 
         # now compute dome slew time
         if lax_dome:
-            # REPPLACE THIS -- should use the free range parameter.
+            # REPLACE THIS -- should use the free range parameter.
             totDomeTime = np.zeros(len(alt_rad), float)
             # model dome creep, dome slit, and no azimuth settle
             # if we can fit both exposures in the dome slit, do so
@@ -304,14 +307,14 @@ class ObservatoryModel(object):
             # the center of the field by an amount domSlitRadius - fovRadius
             domSlitDiam = self.conf.camera.camera_fov / 2.0
             domDeltaAz = deltaAz - 2 * (domSlitDiam / 2 - self.conf.camera.camera_fov / 2)
-            domAltSlewTime = domDeltaAlt / self.conf.dome.domalt_maxspeed_rad
-            domAzSlewTime = domDeltaAz / self.conf.dome.domaz_maxspeed_rad
+            domAltSlewTime = domDeltaAlt / self.conf.domerad['altitude_maxspeed_rad']
+            domAzSlewTime = domDeltaAz / self.conf.domerad['azimuth_maxspeed_rad']
             totDomTime1 = np.maximum(domAltSlewTime, domAzSlewTime)
 
             domDeltaAlt = deltaAlt - 2 * (domSlitDiam / 2 - self.conf.camera.camera_fov / 2)
             domDeltaAz = deltaAz
-            domAltSlewTime = domDeltaAlt / self.conf.dome.domalt_maxspeed_rad
-            domAzSlewTime = domDeltaAz / self.conf.dome.domaz_maxspeed_rad
+            domAltSlewTime = domDeltaAlt / self.conf.domerad['altitude_maxspeed_rad']
+            domAzSlewTime = domDeltaAz / self.conf.domerad['azimuth_maxspeed_rad']
             totDomTime2 = np.maximum(domAltSlewTime, domAzSlewTime)
 
             totDomTime = np.minimum(totDomTime1, totDomTime2)
@@ -320,13 +323,14 @@ class ObservatoryModel(object):
         else:
             # the above models a dome slit and dome creep. However, it appears that
             # SOCS requires the dome to slew exactly to each field and settle in az
-            domAltSlewTime = self._uamSlewTime(deltaAlt, self.conf.dome.domalt_maxspeed_rad,
-                                               self.conf.dome.domalt_accel_rad)
-            domAzSlewTime = self._uamSlewTime(deltaAz, self.conf.dome.domaz_maxspeed_rad,
-                                              self.conf.dome.domaz_accel_rad)
+            domAltSlewTime = self._uamSlewTime(deltaAlt,
+                                               self.conf.domerad['altitude_maxspeed_rad'],
+                                               self.conf.domerad['altitude_accel_rad'])
+            domAzSlewTime = self._uamSlewTime(deltaAz, self.conf.domerad['azimuth_maxspeed_rad'],
+                                              self.conf.domerad['azimuth_accel_rad'])
             # Dome takes 1 second to settle in az
             domAzSlewTime = np.where(domAzSlewTime > 0,
-                                     domAzSlewTime + self.conf.dome.domaz_settletime,
+                                     domAzSlewTime + self.conf.dome.settle_time,
                                      domAzSlewTime)
             totDomTime = np.maximum(domAltSlewTime, domAzSlewTime)
         # Find the max of the above for slew time.
@@ -337,14 +341,14 @@ class ObservatoryModel(object):
                                             self.conf.camera.filter_changetime)
         # Add closed loop optics correction
         # Find the limit where we must add the delay
-        cl_limit = self.conf.optics.optics_cl_altlimit[1]
-        cl_delay = self.conf.optics.optics_cl_delay[1]
+        cl_limit = self.conf.optics.tel_optics_cl_alt_limit[1]
+        cl_delay = self.conf.optics.tel_optics_cl_delay[1]
         closeLoop = np.where(deltaAlt >= cl_limit)
         slewTime[closeLoop] += cl_delay
 
         # Mask min/max altitude limits so slewtime = np.nan
-        outsideLimits = np.where((alt_rad > self.conf.telescope.telalt_maxpos_rad) |
-                                 (alt_rad < self.conf.telescope.telalt_minpos_rad))
+        outsideLimits = np.where((alt_rad > self.conf.telrad['altitude_maxpos_rad']) |
+                                 (alt_rad < self.conf.telrad['altitude_minpos_rad']))
         slewTime[outsideLimits] = -1
         return slewTime
 
@@ -442,9 +446,9 @@ class ObservatoryModel(object):
         fail_record = self.current_state.fail_record
         self.current_state.fail_state = 0
 
-        if targetposition.alt_rad < self.params.telalt_minpos_rad:
-            telalt_rad = self.params.telalt_minpos_rad
-            domalt_rad = self.params.telalt_minpos_rad
+        if targetposition.alt_rad < self.conf.telrad['altitude_minpos_rad']:
+            telalt_rad = self.conf.telrad['altitude_minpos_rad']
+            domalt_rad = self.conf.telrad['altitude_minpos_rad']
             valid_state = False
 
             if "telalt_minpos_rad" in fail_record:
@@ -455,9 +459,9 @@ class ObservatoryModel(object):
             self.current_state.fail_state = self.current_state.fail_state | \
                                             self.current_state.fail_value_table["altEmin"]
 
-        elif targetposition.alt_rad > self.params.telalt_maxpos_rad:
-            telalt_rad = self.params.telalt_maxpos_rad
-            domalt_rad = self.params.telalt_maxpos_rad
+        elif targetposition.alt_rad > self.conf.telrad['altitude_maxpos_rad']:
+            telalt_rad = self.conf.telrad['altitude_maxpos_rad']
+            domalt_rad = self.conf.telrad['altitude_maxpos_rad']
             valid_state = False
             if "telalt_maxpos_rad" in fail_record:
                 fail_record["telalt_maxpos_rad"] += 1
@@ -474,8 +478,8 @@ class ObservatoryModel(object):
         if istracking:
             (telaz_rad, delta) = self.get_closest_angle_distance(targetposition.az_rad,
                                                                  self.current_state.telaz_rad)
-            if telaz_rad < self.params.telaz_minpos_rad:
-                telaz_rad = self.params.telaz_minpos_rad
+            if telaz_rad < self.conf.telrad['azimuth_minpos_rad']:
+                telaz_rad = self.conf.telrad['azimuth_minpos_rad']
                 valid_state = False
                 if "telaz_minpos_rad" in fail_record:
                     fail_record["telaz_minpos_rad"] += 1
@@ -485,8 +489,8 @@ class ObservatoryModel(object):
                 self.current_state.fail_state = self.current_state.fail_state | \
                                                 self.current_state.fail_value_table["azEmin"]
 
-            elif telaz_rad > self.params.telaz_maxpos_rad:
-                telaz_rad = self.params.telaz_maxpos_rad
+            elif telaz_rad > self.conf.telrad['azimuth_maxpos_rad']:
+                telaz_rad = self.conf.telrad['azimuth_maxpos_rad']
                 valid_state = False
                 if "telaz_maxpos_rad" in fail_record:
                     fail_record["telaz_maxpos_rad"] += 1
@@ -499,8 +503,8 @@ class ObservatoryModel(object):
         else:
             (telaz_rad, delta) = self.get_closest_angle_distance(targetposition.az_rad,
                                                                  self.current_state.telaz_rad,
-                                                                 self.params.telaz_minpos_rad,
-                                                                 self.params.telaz_maxpos_rad)
+                                                                 self.conf.telrad['azimuth_minpos_rad'],
+                                                                 self.conf.telrad['azimuth_maxpos_rad'])
 
         (domaz_rad, delta) = self.get_closest_angle_distance(targetposition.az_rad,
                                                              self.current_state.domaz_rad)
@@ -508,8 +512,8 @@ class ObservatoryModel(object):
         if istracking:
             (telrot_rad, delta) = self.get_closest_angle_distance(targetposition.rot_rad,
                                                                   self.current_state.telrot_rad)
-            if telrot_rad < self.params.telrot_minpos_rad:
-                telrot_rad = self.params.telrot_minpos_rad
+            if telrot_rad < self.conf.rotrad['minpos_rad']:
+                telrot_rad = self.conf.rotrad['minpos_rad']
                 valid_state = False
                 if "telrot_minpos_rad" in fail_record:
                     fail_record["telrot_minpos_rad"] += 1
@@ -519,8 +523,8 @@ class ObservatoryModel(object):
                 self.current_state.fail_state = self.current_state.fail_state | \
                                                 self.current_state.fail_value_table["rotEmin"]
 
-            elif telrot_rad > self.params.telrot_maxpos_rad:
-                telrot_rad = self.params.telrot_maxpos_rad
+            elif telrot_rad > self.conf.rotrad['maxpos_rad']:
+                telrot_rad = self.conf.rotrad['maxpos_rad']
                 valid_state = False
                 if "telrot_maxpos_rad" in fail_record:
                     fail_record["telrot_maxpos_rad"] += 1
@@ -532,14 +536,14 @@ class ObservatoryModel(object):
         else:
             # if the target rotator angle is unreachable
             # then sets an arbitrary value (opposite)
-            norm_rot_rad = divmod(targetposition.rot_rad - self.params.telrot_minpos_rad, TWOPI)[1] \
-                + self.params.telrot_minpos_rad
-            if norm_rot_rad > self.params.telrot_maxpos_rad:
+            norm_rot_rad = divmod(targetposition.rot_rad - self.conf.rotrad['minpos_rad'], TWOPI)[1] \
+                + self.conf.rotrad['minpos_rad']
+            if norm_rot_rad > self.conf.rotrad['maxpos_rad']:
                 targetposition.rot_rad = norm_rot_rad - math.pi
             (telrot_rad, delta) = self.get_closest_angle_distance(targetposition.rot_rad,
                                                                   self.current_state.telrot_rad,
-                                                                  self.params.telrot_minpos_rad,
-                                                                  self.params.telrot_maxpos_rad)
+                                                                  self.conf.rotrad['minpos_rad'],
+                                                                  self.conf.rotrad['maxpos_rad'])
         targetposition.ang_rad = divmod(targetposition.pa_rad - telrot_rad, TWOPI)[1]
 
         targetstate = ObservatoryState()
@@ -572,8 +576,8 @@ class ObservatoryModel(object):
         """
         ddtime = target.dd_exptime + \
             target.dd_exposures * self.conf.camera.shuttertime + \
-            max(target.dd_exposures - 1, 0) * self.conf.camera.readouttime + \
-            target.dd_filterchanges * (self.conf.camera.filter_changetime - self.conf.camera.readouttime)
+            max(target.dd_exposures - 1, 0) * self.conf.camera.readout_time + \
+            target.dd_filterchanges * (self.conf.camera.filter_changetime - self.conf.camera.readout_time)
 
         return ddtime
 
@@ -633,10 +637,10 @@ class ObservatoryModel(object):
             The slew delay for the domalt activity.
         """
         distance = targetstate.domalt_rad - initstate.domalt_rad
-        maxspeed = self.conf.dome.domalt_maxspeed_rad
-        accel = self.conf.dome.domalt_accel_rad
-        decel = self.conf.dome.domalt_decel_rad
-        free_range = self.conf.dome.domalt_free_range
+        maxspeed = self.conf.domerad['altitude_maxspeed_rad']
+        accel = self.conf.domerad['altitude_accel_rad']
+        decel = self.conf.domerad['altitude_decel_rad']
+        free_range = self.conf.domerad['altitude_freerange_rad']
 
         (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel, free_range)
         targetstate.domalt_peakspeed_rad = peakspeed
@@ -663,10 +667,10 @@ class ObservatoryModel(object):
             The slew delay for the domaz activity.
         """
         distance = targetstate.domaz_rad - initstate.domaz_rad
-        maxspeed = self.conf.dome.domaz_maxspeed_rad
-        accel = self.conf.dome.domaz_accel_rad
-        decel = self.conf.dome.domaz_decel_rad
-        free_range = self.conf.dome.domaz_free_range
+        maxspeed = self.conf.domerad['azimuth_maxspeed_rad']
+        accel = self.conf.domerad['azimuth_accel_rad']
+        decel = self.conf.domerad['azimuth_decel_rad']
+        free_range = self.conf.domerad['azimuth_freerange_rad']
 
         (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel, free_range)
         targetstate.domaz_peakspeed_rad = peakspeed
@@ -695,7 +699,7 @@ class ObservatoryModel(object):
         distance = abs(targetstate.domaz_rad - initstate.domaz_rad)
 
         if distance > 1e-6:
-            delay = self.conf.dome.domaz_settletime
+            delay = self.conf.dome.settle_time
         else:
             delay = 0
 
@@ -741,7 +745,7 @@ class ObservatoryModel(object):
         float
             The slew delay for the filter activity.
         """
-        if targetstate.filter != initstate.filter:
+        if targetstate.filterband != initstate.filterband:
             # filter change needed
             delay = self.conf.camera.filter_changetime
         else:
@@ -768,7 +772,7 @@ class ObservatoryModel(object):
         float
             The slew delay for the readout activity.
         """
-        return self.conf.camera.readouttime
+        return self.conf.camera.readout_time
 
     def get_delay_for_telalt(self, targetstate, initstate):
         """Calculate slew delay for telalt activity.
@@ -790,9 +794,9 @@ class ObservatoryModel(object):
             The slew delay for the telalt activity.
         """
         distance = targetstate.telalt_rad - initstate.telalt_rad
-        maxspeed = self.conf.telescope.telalt_maxspeed_rad
-        accel = self.conf.telescope.telalt_accel_rad
-        decel = self.conf.telescope.telalt_decel_rad
+        maxspeed = self.conf.telrad['altitude_maxspeed_rad']
+        accel = self.conf.telrad['altitude_accel_rad']
+        decel = self.conf.telrad['altitude_decel_rad']
 
         (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel)
         targetstate.telalt_peakspeed_rad = peakspeed
@@ -819,9 +823,9 @@ class ObservatoryModel(object):
             The slew delay for the telaz activity.
         """
         distance = targetstate.telaz_rad - initstate.telaz_rad
-        maxspeed = self.conf.telescope.telaz_maxspeed_rad
-        accel = self.conf.telescope.telaz_accel_rad
-        decel = self.conf.telescope.telaz_decel_rad
+        maxspeed = self.conf.telrad['azimuth_maxspeed_rad']
+        accel = self.conf.telrad['azimuth_accel_rad']
+        decel = self.conf.telrad['azimuth_decel_rad']
 
         (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel)
         targetstate.telaz_peakspeed_rad = peakspeed
@@ -850,9 +854,9 @@ class ObservatoryModel(object):
         distance = abs(targetstate.telalt_rad - initstate.telalt_rad)
 
         delay = 0.0
-        for k, cl_delay in enumerate(self.conf.optics.optics_cl_delay):
-            if self.conf.optics.optics_cl_altlimit[k] <= distance < \
-                    self.conf.optics.optics_cl_altlimit[k + 1]:
+        for k, cl_delay in enumerate(self.conf.optics.tel_optics_cl_delay):
+            if self.conf.optics.tel_optics_cl_alt_limit[k] <= distance < \
+                    self.conf.optics.tel_optics_cl_alt_limit[k + 1]:
                 delay = cl_delay
                 break
 
@@ -880,7 +884,7 @@ class ObservatoryModel(object):
         distance = abs(targetstate.telalt_rad - initstate.telalt_rad)
 
         if distance > 1e-6:
-            delay = distance * self.conf.optics.optics_ol_slope
+            delay = distance * self.conf.optics.tel_optics_ol_slope
         else:
             delay = 0
 
@@ -906,9 +910,9 @@ class ObservatoryModel(object):
             The slew delay for the telrot activity.
         """
         distance = targetstate.telrot_rad - initstate.telrot_rad
-        maxspeed = self.conf.telescope.telrot_maxspeed_rad
-        accel = self.conf.telescope.telrot_accel_rad
-        decel = self.conf.telescope.telrot_decel_rad
+        maxspeed = self.conf.rotrad['maxspeed_rad']
+        accel = self.conf.rotrad['accel_rad']
+        decel = self.conf.rotrad['decel_rad']
 
         (delay, peakspeed) = self.compute_kinematic_delay(distance, maxspeed, accel, decel)
         targetstate.telrot_peakspeed_rad = peakspeed
@@ -938,7 +942,7 @@ class ObservatoryModel(object):
             abs(targetstate.telaz_rad - initstate.telaz_rad)
 
         if distance > 1e-6:
-            delay = self.conf.telescope.mount_settletime
+            delay = self.conf.telescope.settle_time
         else:
             delay = 0
 
@@ -1015,7 +1019,7 @@ class ObservatoryModel(object):
             The total slew delay for the target.
         """
 
-        if target.filter != self.current_state.filter:
+        if target.filterband != self.current_state.filterband:
             # check if filter is possible
             if not self.is_filter_change_allowed_for(target.filter):
                 return -1.0, self.current_state.fail_value_table["filter"]
@@ -1024,12 +1028,12 @@ class ObservatoryModel(object):
                                                 target.ra_rad,
                                                 target.dec_rad,
                                                 target.ang_rad,
-                                                target.filter)
+                                                target.filterband)
 
         # check if altitude is possible
-        if targetposition.alt_rad < self.conf.telescope.telalt_minpos_rad:
+        if targetposition.alt_rad < self.conf.telrad['telalt_minpos_rad']:
             return -1.0, self.current_state.fail_value_table["altEmin"]
-        if targetposition.alt_rad > self.conf.telescope.telalt_maxpos_rad:
+        if targetposition.alt_rad > self.conf.telrad['telalt_maxpos_rad']:
             return -1.0, self.current_state.fail_value_table["altEmax"]
 
         targetstate = self.get_closest_state(targetposition)
@@ -1142,17 +1146,22 @@ class ObservatoryModel(object):
         self.slew(target)
         visit_time = sum(target.exp_times) + \
             target.num_exp * self.conf.camera.shuttertime + \
-            max(target.num_exp - 1, 0) * self.conf.camera.readouttime
+            max(target.num_exp - 1, 0) * self.conf.camera.readout_time
         self.update_state(self.current_state.time + visit_time)
 
     def park(self):
         """Put the observatory into the park state.
         """
-        self.park_state.filter = self.current_state.filter
+        self.park_state.filterband = self.current_state.filterband
         slew_delay = self.get_slew_delay_for_state(self.park_state, self.current_state, True)
         self.park_state.time = self.current_state.time + slew_delay
         self.current_state.set(self.park_state)
         self.update_state(self.park_state.time)
+
+    def reset(self):
+            """Reset the observatory state to the parking state - without actually slewing there.
+            """
+            self.set_state(self.park_state)
 
     def calcLst(self, time):
         """Calculate local sidereal time (in radians) for a given time.
@@ -1215,7 +1224,7 @@ class ObservatoryModel(object):
         pa_rad = divmod(pal.pa(ha_rad, dec_rad, self.site.latitude_rad), TWOPI)[1]
         return (alt_rad, az_rad, pa_rad)
 
-    def radecang2position(self, time, ra_rad, dec_rad, ang_rad, band_filter):
+    def radecang2position(self, time, ra_rad, dec_rad, ang_rad, filterband):
         """Convert current time, sky location and filter into observatory\
            position.
 
@@ -1229,7 +1238,7 @@ class ObservatoryModel(object):
             The current declination (radians).
         ang_rad : float
             The current sky angle (radians).
-        band_filter : str
+        filterband : str
             The current band filter.
 
         Returns
@@ -1241,7 +1250,7 @@ class ObservatoryModel(object):
 
         position = ObservatoryPosition(time=time, tracking=True,
                                        ra_rad=ra_rad, dec_rad=dec_rad, ang_rad=ang_rad,
-                                       band_filter=band_filter,
+                                       filterband=filterband,
                                        alt_rad=alt_rad, az_rad=az_rad, pa_rad=pa_rad,
                                        rot_rad=divmod(pa_rad - ang_rad, TWOPI)[1])
         return position
@@ -1254,11 +1263,11 @@ class ObservatoryModel(object):
         new_state : :class:`.ObservatoryState`
             The instance containing the state to update the observatory to.
         """
-        if new_state.filter != self.current_state.filter:
+        if new_state.filterband != self.current_state.filterband:
             self.filter_changes_list.append(new_state.time)
 
         self.current_state.set(new_state)
-        self.time.update(new_state.time)
+        self.time = new_state.time
 
     def slew(self, target):
         """Slew the observatory to the given target location.
@@ -1269,9 +1278,9 @@ class ObservatoryModel(object):
             The instance containing the target information for the slew.
         """
         self.slew_radec(self.current_state.time,
-                        target.ra_rad, target.dec_rad, target.ang_rad, target.filter)
+                        target.ra_rad, target.dec_rad, target.ang_rad, target.filterband)
 
-    def slew_altaz(self, time, alt_rad, az_rad, rot_rad, band_filter):
+    def slew_altaz(self, time, alt_rad, az_rad, rot_rad, filterband):
         """Slew observatory to the given alt, az location.
 
         Parameters
@@ -1284,14 +1293,14 @@ class ObservatoryModel(object):
             The azimuth (radians) to slew to.
         rot_rad : float
             The telescope rotator angle (radians) for the slew.
-        band_filter : str
+        filterband : str
             The band filter for the slew.
         """
         self.update_state(time)
         time = self.current_state.time
 
         targetposition = ObservatoryPosition(time=time, alt_rad=alt_rad, az_rad=az_rad,
-                                             rot_rad=rot_rad, band_filter=band_filter,
+                                             rot_rad=rot_rad, filterband=filterband,
                                              tracking=False)
         self.slew_to_position(targetposition)
 
@@ -1308,7 +1317,7 @@ class ObservatoryModel(object):
             The declination (radians) to slew to.
         ang_rad : float
             The sky angle (radians) for the slew.
-        band_filter : str
+        filterband : str
             The band filter for the slew.
         """
         self.update_state(time)
@@ -1330,7 +1339,7 @@ class ObservatoryModel(object):
         targetstate.mountedfilters = self.current_state.mountedfilters
         targetstate.unmountedfilters = self.current_state.unmountedfilters
         slew_delay = self.get_slew_delay_for_state(targetstate, self.current_state, True)
-        if targetposition.filter != self.current_state.filter:
+        if targetposition.filterband != self.current_state.filterband:
             self.filter_changes_list.append(targetstate.time)
         targetstate.time = targetstate.time + slew_delay
         self.current_state.set(targetstate)
@@ -1399,7 +1408,7 @@ class ObservatoryModel(object):
                                                     self.current_state.ra_rad,
                                                     self.current_state.dec_rad,
                                                     self.current_state.ang_rad,
-                                                    self.current_state.filter)
+                                                    self.current_state.filterband)
 
             targetstate = self.get_closest_state(targetposition, istracking=True)
 

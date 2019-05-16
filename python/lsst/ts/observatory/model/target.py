@@ -1,5 +1,4 @@
 import math
-import numpy
 import json
 
 
@@ -10,7 +9,7 @@ class Target(object):
     """Class for gathering information for a sky target.
     """
 
-    def __init__(self, targetid=0, fieldid=0, band_filter="",
+    def __init__(self, targetid=0, fieldid=0, filterband="",
                  ra_rad=0.0, dec_rad=0.0, ang_rad=0.0,
                  num_exp=0, exp_times=[]):
         """Initialize the class.
@@ -21,7 +20,7 @@ class Target(object):
             A unique identifier for the given target.
         fieldid : int
             The ID of the associated OpSim field for the target.
-        band_filter : str
+        filterband : str
             The single character name of the associated band filter.
         ra_rad : float
             The right ascension (radians) of the target.
@@ -37,7 +36,7 @@ class Target(object):
         """
         self.targetid = targetid
         self.fieldid = fieldid
-        self.filter = band_filter
+        self.filterband = filterband
         self.ra_rad = ra_rad
         self.dec_rad = dec_rad
         self.ang_rad = ang_rad
@@ -71,7 +70,7 @@ class Target(object):
                 "time=%.1f airmass=%.3f brightness=%.3f "
                 "cloud=%.2f seeing=%.2f "
                 "slewtime=%.3f note=%s" %
-                (self.targetid, self.fieldid, self.filter,
+                (self.targetid, self.fieldid, self.filterband,
                  str(self.exp_times),
                  self.ra, self.dec, self.ang,
                  self.alt, self.az, self.rot,
@@ -273,7 +272,7 @@ class Target(object):
         newtarget = Target()
         newtarget.targetid = self.targetid
         newtarget.fieldid = self.fieldid
-        newtarget.filter = self.filter
+        newtarget.filterband = self.filterband
         newtarget.ra_rad = self.ra_rad
         newtarget.dec_rad = self.dec_rad
         newtarget.ang_rad = self.ang_rad
@@ -308,7 +307,7 @@ class Target(object):
         """
         alternate __init__ method that takes a json representation as the only argument
         """
-        mandatory_fields = ["targetid", "fieldid", "filter", "ra_rad", "dec_rad",
+        mandatory_fields = ["targetid", "fieldid", "filterband", "ra_rad", "dec_rad",
                             "ang_rad", "num_exp", "exp_times"]
 
         jsondict = json.loads(jsonstr)

@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import math
 import lsst.pex.config as pexConfig
 from lsst.sims.utils import Site
 import lsst.sims.utils.version as sims_utils_version
@@ -19,8 +20,17 @@ class Config(object):
 
         self.observatory = ObservatoryModelConfig()
         self.telescope = TelescopeModelConfig()
+        self.telrad = {}
+        for k, v in self.telescope.items():
+            self.telrad[k + '_rad'] = math.radians(v)
         self.dome = DomeModelConfig()
+        self.domerad = {}
+        for k, v in self.dome.items():
+            self.domerad[k + '_rad'] = math.radians(v)
         self.rotator = RotatorModelConfig()
+        self.rotrad = {}
+        for k, v in self.rotator.items():
+            self.rotrad[k + '_rad'] = math.radians(v)
         self.camera = CameraModelConfig()
         self.optics = OpticsLoopCorrectionModelConfig()
         self.slew = SlewRequirementsModelConfig()
@@ -122,7 +132,7 @@ class DomeModelConfig(pexConfig.Config):
                                      default=0.875)
     altitude_freerange = pexConfig.Field(doc="Dome free range in altitude (deg)",
                                          dtype=float,
-                                         default = 0)
+                                         default=0)
 
     azimuth_maxspeed = pexConfig.Field(doc="Dome maximum speed (deg/sec) for the azimuth",
                                        dtype=float,

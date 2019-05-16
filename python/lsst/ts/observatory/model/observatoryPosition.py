@@ -17,7 +17,7 @@ class ObservatoryPosition(object):
         The declination (radians) for the pointing position.
     ang_rad : float
         The position angle (radians) for the pointing position (angle between y & N).
-    band_filter : str
+    filterband : str
         The band filter being used during the pointing.
     tracking : bool
         The tracking state of the pointing.
@@ -32,7 +32,7 @@ class ObservatoryPosition(object):
     """
 
     def __init__(self, time=0.0, ra_rad=0.0, dec_rad=0.0, ang_rad=0.0,
-                 band_filter='r', tracking=False, alt_rad=1.5, az_rad=0.0,
+                 filterband='r', tracking=False, alt_rad=1.5, az_rad=0.0,
                  pa_rad=0.0, rot_rad=0.0):
         """Initialize the class.
         """
@@ -40,7 +40,7 @@ class ObservatoryPosition(object):
         self.ra_rad = ra_rad
         self.dec_rad = dec_rad
         self.ang_rad = ang_rad
-        self.filter = band_filter
+        self.filterband = filterband
         self.tracking = tracking
         self.alt_rad = alt_rad
         self.az_rad = az_rad
@@ -49,9 +49,9 @@ class ObservatoryPosition(object):
 
     def __str__(self):
         """str: The string representation of the instance."""
-        return "t=%.1f ra=%.3f dec=%.3f ang=%.3f filter=%s track=%s alt=%.3f "\
+        return "t=%f ra=%.3f dec=%.3f ang=%.3f filter=%s track=%s alt=%.3f "\
                "az=%.3f pa=%.3f rot=%.3f" % \
-               (self.time.tai.mjd, self.ra, self.dec, self.ang, self.filter,
+               (self.time.tai.mjd, self.ra, self.dec, self.ang, self.filterband,
                 self.tracking, self.alt, self.az, self.pa, self.rot)
 
     @property

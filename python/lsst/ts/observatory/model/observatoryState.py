@@ -18,7 +18,7 @@ class ObservatoryState(ObservatoryPosition):
         The declination (radians) for the pointing position.
     ang_rad : float
         The position angle (radians) of the pointing (angle between y & N)
-    band_filter : str
+    filterband : str
         The band filter being used during the pointing.
     tracking : bool
         The tracking state of the pointing.
@@ -65,7 +65,7 @@ class ObservatoryState(ObservatoryPosition):
     """
 
     def __init__(self, time=0.0, ra_rad=0.0, dec_rad=0.0, ang_rad=0.0,
-                 band_filter='r', tracking=False, alt_rad=1.5, az_rad=0.0,
+                 filterband='r', tracking=False, alt_rad=1.5, az_rad=0.0,
                  pa_rad=0.0, rot_rad=0.0, telalt_rad=1.5, telaz_rad=0.0,
                  telrot_rad=0.0, domalt_rad=1.5, domaz_rad=0.0,
                  mountedfilters=['g', 'r', 'i', 'z', 'y'],
@@ -73,7 +73,7 @@ class ObservatoryState(ObservatoryPosition):
         """Initialize the class.
         """
         ObservatoryPosition.__init__(self, time, ra_rad, dec_rad, ang_rad,
-                                     band_filter, tracking, alt_rad, az_rad,
+                                     filterband, tracking, alt_rad, az_rad,
                                      pa_rad, rot_rad)
 
         self.telalt_rad = telalt_rad
@@ -167,7 +167,7 @@ class ObservatoryState(ObservatoryPosition):
         self.ra_rad = newstate.ra_rad
         self.dec_rad = newstate.dec_rad
         self.ang_rad = newstate.ang_rad
-        self.band_filter = newstate.band_filter
+        self.filterband = newstate.filterband
         self.tracking = newstate.tracking
         self.alt_rad = newstate.alt_rad
         self.az_rad = newstate.az_rad
@@ -205,7 +205,7 @@ class ObservatoryState(ObservatoryPosition):
         self.ra_rad = newposition.ra_rad
         self.dec_rad = newposition.dec_rad
         self.ang_rad = newposition.ang_rad
-        self.band_filter = newposition.band_filter
+        self.filterband = newposition.filterband
         self.tracking = newposition.tracking
         self.alt_rad = newposition.alt_rad
         self.az_rad = newposition.az_rad
