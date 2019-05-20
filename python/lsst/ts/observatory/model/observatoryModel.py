@@ -265,13 +265,38 @@ class ObservatoryModel(object):
         # FYI this takes on the order of 285 us to calculate slew times to 2293 pts (.12us per pointing)
         # Find the distances to all the other fields.
         deltaAlt = np.abs(alt_rad - self.current_state.alt_rad)
-        deltaAz = np.abs(az_rad - self.current_state.az_rad)
-        deltaAz = np.minimum(deltaAz, np.abs(deltaAz - 2 * np.pi))
+        deltaAz = np.divmod(az_rad - self.current_state.az_rad, TWOPI)[1]
+        get_shorter = np.where(deltaAz > np.pi)
+        deltaAz[get_shorter] -= TWOPI
+        deltaAz = np.abs(deltaAz)
 
-        # Calculate how long the telescope will take to slew to this position.
+        # Calculate how long the telescope will take to slew to this position with cable wrap on azimuth
+        current_abs_rad = self.current_state.telaz_rad
+        max_abs_rad = self.conf.telrad["telaz_maxpos_rad"]
+        min_abs_rad = self.conf.telrad["telaz_minpos_rad"]
+
+        norm_az_rad = np.divmod(az_rad - min_abs_rad, TWOPI)[1] + min_abs_rad
+        if type(norm_az_rad) is float and norm_az_rad > max_abs_rad:
+            norm_az_rad = max(min_abs_rad, norm_az_rad - math.pi)
+        else:
+            out_of_bounds = np.where(norm_az_rad > max_abs_rad)
+            to_compare = np.zeros(np.size(out_of_bounds[0]))+min_abs_rad
+            norm_az_rad[out_of_bounds] = np.maximum(to_compare, norm_az_rad[out_of_bounds] - np.pi)
+
+        # computes the distance clockwise
+        distance_rad = divmod(norm_az_rad - current_abs_rad, TWOPI)[1]
+        get_shorter = np.where(distance_rad > np.pi)
+        distance_rad[get_shorter] -= TWOPI
+        accum_abs_rad = current_abs_rad + distance_rad
+
+        mask_max = np.where(accum_abs_rad > max_abs_rad)
+        mask_min = np.where(accum_abs_rad < min_abs_rad)
+        distance_rad[mask_max] -= TWOPI
+        distance_rad[mask_min] += TWOPI
+
         telAltSlewTime = self._uamSlewTime(deltaAlt, self.conf.telrad['altitude_maxspeed_rad'],
                                            self.conf.telrad['altitude_accel_rad'])
-        telAzSlewTime = self._uamSlewTime(deltaAz, self.conf.telrad['azimuth_maxspeed_rad'],
+        telAzSlewTime = self._uamSlewTime(np.abs(distance_rad), self.conf.telrad['azimuth_maxspeed_rad'],
                                           self.conf.telrad['azimuth_accel_rad'])
         totTelTime = np.maximum(telAltSlewTime, telAzSlewTime)
         # Time for open loop optics correction
