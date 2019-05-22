@@ -3,6 +3,7 @@ import warnings
 import math
 import numpy as np
 import palpy as pal
+from astropy.time import TimeDelta
 from .observatoryModelConfig import Config
 from lsst.ts.observatory.model import ObservatoryPosition, ObservatoryState
 
@@ -72,8 +73,6 @@ class ObservatoryModel(object):
         self.lastslew_delays_dict = {}
         self.lastslew_criticalpath = []
         self.filter_changes_list = []
-        # Set the telescope state to the park state.
-        self.reset()
 
     def __str__(self):
         """str: The string representation of the model."""
@@ -81,7 +80,10 @@ class ObservatoryModel(object):
 
     def configure(self, config=None):
         """Configure the model. After 'configure' the model config will be frozen.
-        Set the telescope to the park state.
+
+        Configure basically resets the telescope model to the initial state (which filters are mounted, etc.)
+        then puts the telescope at park, and updates the state (to get an accurate ra/dec value).
+        Note though that the time is set to self.time, which may not be the original start time.
 
         Parameters
         ----------
@@ -95,12 +97,16 @@ class ObservatoryModel(object):
         self.conf.freeze()
         self.site = self.conf.site
 
-        # Set the 'current' state (to defaults, except for filters)
+        # Set the 'current' state (to defaults, except for filters and time)
         self.current_state = ObservatoryState(self.time)
-        self.current_state.mountedfilters = self.conf.camera.filters_mounted
-        self.current_state.unmountedfilters = self.conf.camera.filters_unmounted
+        self.current_state.mountedfilters = list(self.conf.camera.filters_mounted)
+        self.current_state.unmountedfilters = list(self.conf.camera.filters_unmounted)
         # Set the 'park' state
         self.configure_park()
+        # Set the telescope to the park state.
+        self.reset()
+        # And set the ra/dec values
+        self.update_state()
 
     def configure_park(self):
         """Configure the telescope park state parameters.
@@ -336,9 +342,9 @@ class ObservatoryModel(object):
         # Find the max of the above for slew time.
         slewTime = np.maximum(totTelTime, totDomTime)
         # include filter change time if necessary
-        filterChange = np.where(goal_filter != self.current_state.filter)
+        filterChange = np.where(goal_filter != self.current_state.filterband)
         slewTime[filterChange] = np.maximum(slewTime[filterChange],
-                                            self.conf.camera.filter_changetime)
+                                            self.conf.camera.filter_change_time)
         # Add closed loop optics correction
         # Find the limit where we must add the delay
         cl_limit = self.conf.optics.tel_optics_cl_alt_limit[1]
@@ -445,7 +451,7 @@ class ObservatoryModel(object):
         valid_state = True
         fail_record = self.current_state.fail_record
         self.current_state.fail_state = 0
-
+        # Check altitude for target
         if targetposition.alt_rad < self.conf.telrad['altitude_minpos_rad']:
             telalt_rad = self.conf.telrad['altitude_minpos_rad']
             domalt_rad = self.conf.telrad['altitude_minpos_rad']
@@ -475,6 +481,7 @@ class ObservatoryModel(object):
             telalt_rad = targetposition.alt_rad
             domalt_rad = targetposition.alt_rad
 
+        # Check azimuith for target - including possible cable wrap
         if istracking:
             (telaz_rad, delta) = self.get_closest_angle_distance(targetposition.az_rad,
                                                                  self.current_state.telaz_rad)
@@ -509,6 +516,7 @@ class ObservatoryModel(object):
         (domaz_rad, delta) = self.get_closest_angle_distance(targetposition.az_rad,
                                                              self.current_state.domaz_rad)
 
+        # Check rotator angle
         if istracking:
             (telrot_rad, delta) = self.get_closest_angle_distance(targetposition.rot_rad,
                                                                   self.current_state.telrot_rad)
@@ -575,9 +583,9 @@ class ObservatoryModel(object):
             The total observation time.
         """
         ddtime = target.dd_exptime + \
-            target.dd_exposures * self.conf.camera.shuttertime + \
+            target.dd_exposures * self.conf.camera.shutter_time + \
             max(target.dd_exposures - 1, 0) * self.conf.camera.readout_time + \
-            target.dd_filterchanges * (self.conf.camera.filter_changetime - self.conf.camera.readout_time)
+            target.dd_filterchanges * (self.conf.camera.filter_change_time - self.conf.camera.readout_time)
 
         return ddtime
 
@@ -747,7 +755,7 @@ class ObservatoryModel(object):
         """
         if targetstate.filterband != initstate.filterband:
             # filter change needed
-            delay = self.conf.camera.filter_changetime
+            delay = self.conf.camera.filter_change_time
         else:
             delay = 0.0
 
@@ -855,8 +863,8 @@ class ObservatoryModel(object):
 
         delay = 0.0
         for k, cl_delay in enumerate(self.conf.optics.tel_optics_cl_delay):
-            if self.conf.optics.tel_optics_cl_alt_limit[k] <= distance < \
-                    self.conf.optics.tel_optics_cl_alt_limit[k + 1]:
+            if self.conf.opticsrad['tel_optics_cl_alt_limit_rad'][k] <= distance < \
+                    self.conf.opticsrad['tel_optics_cl_alt_limit_rad'][k + 1]:
                 delay = cl_delay
                 break
 
@@ -884,7 +892,7 @@ class ObservatoryModel(object):
         distance = abs(targetstate.telalt_rad - initstate.telalt_rad)
 
         if distance > 1e-6:
-            delay = distance * self.conf.optics.tel_optics_ol_slope
+            delay = distance * self.conf.opticsrad['tel_optics_ol_slope_rad']
         else:
             delay = 0
 
@@ -1021,7 +1029,7 @@ class ObservatoryModel(object):
 
         if target.filterband != self.current_state.filterband:
             # check if filter is possible
-            if not self.is_filter_change_allowed_for(target.filter):
+            if not self.is_filter_change_allowed_for(target.filterband):
                 return -1.0, self.current_state.fail_value_table["filter"]
 
         targetposition = self.radecang2position(self.time,
@@ -1031,9 +1039,9 @@ class ObservatoryModel(object):
                                                 target.filterband)
 
         # check if altitude is possible
-        if targetposition.alt_rad < self.conf.telrad['telalt_minpos_rad']:
+        if targetposition.alt_rad < self.conf.telrad['altitude_minpos_rad']:
             return -1.0, self.current_state.fail_value_table["altEmin"]
-        if targetposition.alt_rad > self.conf.telrad['telalt_maxpos_rad']:
+        if targetposition.alt_rad > self.conf.telrad['altitude_maxpos_rad']:
             return -1.0, self.current_state.fail_value_table["altEmax"]
 
         targetstate = self.get_closest_state(targetposition)
@@ -1145,7 +1153,7 @@ class ObservatoryModel(object):
         """
         self.slew(target)
         visit_time = sum(target.exp_times) + \
-            target.num_exp * self.conf.camera.shuttertime + \
+            target.num_exp * self.conf.camera.shutter_time + \
             max(target.num_exp - 1, 0) * self.conf.camera.readout_time
         self.update_state(self.current_state.time + visit_time)
 
@@ -1154,12 +1162,13 @@ class ObservatoryModel(object):
         """
         self.park_state.filterband = self.current_state.filterband
         slew_delay = self.get_slew_delay_for_state(self.park_state, self.current_state, True)
-        self.park_state.time = self.current_state.time + slew_delay
+        self.park_state.time = self.current_state.time + TimeDelta(slew_delay, format='sec')
         self.current_state.set(self.park_state)
         self.update_state(self.park_state.time)
 
     def reset(self):
             """Reset the observatory state to the parking state - without actually slewing there.
+            Does not change current filter or mounted filters.
             """
             self.set_state(self.park_state)
 
@@ -1322,7 +1331,7 @@ class ObservatoryModel(object):
         """
         self.update_state(time)
         time = self.current_state.time
-
+        # Note that the targetposition generated from radecang2position has Track=True
         targetposition = self.radecang2position(time, ra_rad, dec_rad, ang_rad, filter)
 
         self.slew_to_position(targetposition)
@@ -1341,7 +1350,7 @@ class ObservatoryModel(object):
         slew_delay = self.get_slew_delay_for_state(targetstate, self.current_state, True)
         if targetposition.filterband != self.current_state.filterband:
             self.filter_changes_list.append(targetstate.time)
-        targetstate.time = targetstate.time + slew_delay
+        targetstate.time = targetstate.time + TimeDelta(slew_delay, format='sec')
         self.current_state.set(targetstate)
         self.update_state(targetstate.time)
 
@@ -1371,7 +1380,7 @@ class ObservatoryModel(object):
             self.update_state(time)
             self.current_state.tracking = False
 
-    def mount_filter(self, filter_to_unmount):
+    def unmount_filter(self, filter_to_unmount):
         """Perform a filter swap with the given filter.
 
         Parameters
@@ -1391,13 +1400,21 @@ class ObservatoryModel(object):
             self.log.info("mount_filter: REJECTED filter %s is not mounted" %
                           (filter_to_unmount))
 
-    def update_state(self, time):
+    def update_state(self, time=None):
         """Update the observatory state for the given time.
+
+        If the specified time is < the current state time, uses the current state instead.
+        Updates ra/dec for current alt/az (if not tracking) or
+        updates alt/az for current (ra/dec) if tracking.
 
         Parameters
         ----------
-        time : astropy.time.Time
+        time : astropy.time.Time (opt)
+            Time to use to sync up ra/dec - alt/az values.
+            If None, then uses current_state.time
         """
+        if time is None:
+            time = self.current_state.time
         if time < self.current_state.time:
             time = self.current_state.time
         self.time = time

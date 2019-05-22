@@ -33,6 +33,11 @@ class Config(object):
             self.rotrad[k + '_rad'] = math.radians(v)
         self.camera = CameraModelConfig()
         self.optics = OpticsLoopCorrectionModelConfig()
+        self.opticsrad = {}
+        self.opticsrad['tel_optics_ol_slope_rad'] = self.optics.tel_optics_ol_slope / math.radians(1)
+        self.opticsrad['tel_optics_cl_alt_limit_rad'] = list(self.optics.tel_optics_cl_alt_limit)
+        for i, alt in enumerate(self.optics.tel_optics_cl_alt_limit):
+            self.opticsrad['tel_optics_cl_alt_limit_rad'][i] = math.radians(alt)
         self.slew = SlewRequirementsModelConfig()
         self.park = ParkModelConfig()
 
@@ -160,7 +165,7 @@ class RotatorModelConfig(pexConfig.Config):
                              default=-90.0)
     maxpos = pexConfig.Field(doc="Rotator angle maximum position (deg)",
                              dtype=float,
-                             default=-90.0)
+                             default=90.0)
     filter_change_pos = pexConfig.Field(doc="Rotator angle for filter change (deg)",
                                         dtype=float,
                                         default=0.0)
