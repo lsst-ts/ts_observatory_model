@@ -6,83 +6,111 @@ __all__ = ["Target"]
 
 
 class Target(object):
-    """Class for gathering information for a sky target.
+    """Target defines a desired pointing for the telescope.
+
+    Target is converted to a full ObservatoryPosition (which specifies the complete details of the pointing)
+    when a specific TIME is added to the calculation.
+    That is, at a given time, ra/dec implies a particular alt/az (or vice versa) and these will be calculated
+    by the ObservatoryPosition.
+    In addition, at any given time, the parallactic angle (angle between North and the zenith) for the
+    ra/dec/alt/az values is fixed. Since
+    rotator angle (rotTelPos) = (parallactic angle - sky angle (rotSkyPos)) % 2PI
+
+
+    While there are defaults available, there is a minimum requirement of setting
+    a pair of either RA/Dec or alt/az values (ra_rad/dec_rad or alt_rad/az_rad).
+    If ra/dec is specified, alt/az will be ignored.
+
+    Parameters
+    ----------
+    targetid : int, opt
+        A unique identifier for the given target. Default 0.
+        This simply aids in identification, but is not important to the ObservatoryModel.
+    filterband : str, opt
+        The single character name of the associated band filter.
+        Default None - in which case, the current filter in use will be filled by the ObservatoryModel.
+    ra_rad : float, opt
+        The right ascension (radians) of the target. Default None.
+        If ra_rad is specified, input is expected to be ra/dec and the alt/az values will be ignored.
+    dec_rad : float, opt
+        The declination (radians) of the target. Default None.
+    ang_rad : float, opt
+        The sky angle (radians) of the target [angle between y and N]. Default None.
+        If ang_rad is specified, rot_rad will be ignored.
+    alt_rad : float, opt
+        The altitude (radians) of the target. Default None.
+        If alt_rad is specified (and not ra_rad), the input is expected to be alt/az.
+    az_rad : float, opt
+        The azimuth (radians) of of the target. Default None.
+    rot_rad : float, opt
+        The rotator angle (radians) of the camera [angle between y and zenith]. Default None.
+        If ang_rad is specified, this value is ignored.
+        If both values are None, the rotator angle will be set to 0.
+    num_exp : int, opt
+        The number of requested exposures for the target. Default 2.
+    exp_times : list[float], opt
+        The set of exposure times (seconds) for the target. Default [15, 15].
+        Length needs to match num_exp.
     """
 
-    def __init__(self, targetid=0, fieldid=0, filterband="",
-                 ra_rad=0.0, dec_rad=0.0, ang_rad=0.0,
-                 num_exp=0, exp_times=[]):
-        """Initialize the class.
+    def __init__(self, targetid=0, filterband=None,
+                 ra_rad=None, dec_rad=None, ang_rad=None,
+                 alt_rad=None, az_rad=None, rot_rad=None,
+                 num_exp=2, exp_times=[15, 15]):
 
-        Parameters
-        ----------
-        targetid : int
-            A unique identifier for the given target.
-        fieldid : int
-            The ID of the associated OpSim field for the target.
-        filterband : str
-            The single character name of the associated band filter.
-        ra_rad : float
-            The right ascension (radians) of the target.
-        dec_rad : float
-            The declination (radians) of the target.
-        ang_rad : float
-            The sky angle (radians) of the target.
-        num_exp : int
-            The number of requested exposures for the target.
-        exp_times : list[float]
-            The set of exposure times for the target. Needs to length
-            of num_exp.
-        """
         self.targetid = targetid
-        self.fieldid = fieldid
         self.filterband = filterband
-        self.ra_rad = ra_rad
-        self.dec_rad = dec_rad
-        self.ang_rad = ang_rad
+
+        # Use ra/dec if available and ignore alt/az.
+        if ra_rad is not None:
+            if dec_rad is None:
+                raise ValueError('Must define both RA/Dec values.')
+            self.ra_rad = ra_rad
+            self.dec_rad = dec_rad
+            self.alt_rad = None
+            self.az_rad = None
+        elif alt_rad is not None:
+            if az_rad is None:
+                raise ValueError('Must define both alt/az values.')
+            self.ra_rad = None
+            self.dec_rad = None
+            self.alt_rad = alt_rad
+            self.az_rad = az_rad
+        else:
+            raise ValueError('Must define either ra/dec or alt/az values.')
+
+        # Check if ang (rotSkyPos) or rotator (rotTelPos) positions specified.
+        if ang_rad is not None:
+            self.ang_rad = ang_rad
+            self.rot_rad = None
+        elif rot_rad is not None:
+            self.rot_rad = rot_rad
+            self.ang_rad = None
+        else:
+            self.ang_rad = None
+            self.rot_rad = 0.0
+
         self.num_exp = num_exp
         self.exp_times = list(exp_times)
-        self._exp_time = None  # total exposure time
-
-        # conditions
-        self.time = 0.0
-        self.airmass = 0.0
-        self.sky_brightness = 0.0
-        self.cloud = 0.0
-        self.seeing = 0.0
-
-        # computed at driver
-        self.alt_rad = 0.0
-        self.az_rad = 0.0
-        self.rot_rad = 0.0
-        self.telalt_rad = 0.0
-        self.telaz_rad = 0.0
-        self.telrot_rad = 0.0
-        self.slewtime = 0.0
-
-        self.note = ''
+        # Check that length of exp_times matches num_exp.
+        if len(self.exp_times) != self.num_exp:
+            raise ValueError('Length of exp_times (%d) must match num_exp (%d).'
+                             % (len(self.exp_times), self.num_exp))
+        self._exp_time = sum(self.exp_times)  # total on-sky exposure time
 
     def __str__(self):
         """str: The string representation of the instance."""
-        return ("targetid=%d field=%d filter=%s exp_times=%s ra=%.3f "
-                "dec=%.3f ang=%.3f alt=%.3f az=%.3f rot=%.3f "
-                "telalt=%.3f telaz=%.3f telrot=%.3f "
-                "time=%.1f airmass=%.3f brightness=%.3f "
-                "cloud=%.2f seeing=%.2f "
-                "slewtime=%.3f note=%s" %
-                (self.targetid, self.fieldid, self.filterband,
-                 str(self.exp_times),
-                 self.ra, self.dec, self.ang,
-                 self.alt, self.az, self.rot,
-                 self.telalt, self.telaz, self.telrot,
-                 self.time, self.airmass, self.sky_brightness,
-                 self.cloud, self.seeing,
-                 self.slewtime,self.note))
+        s = f'targetid {self.targetid} filterband {self.filterband} numexp {self.num_exp} exp_times {self.exp_times}'
+        s += f' ra {self.ra} dec {self.dec} ang {self.ang} alt {self.alt} az {self.az} rot {self.rot}'
+        return s
 
     @property
     def alt(self):
         """float: The altitude (degrees) of the target."""
-        return math.degrees(self.alt_rad)
+        try:
+            return math.degrees(self.alt_rad)
+        except TypeError:
+            return None
 
     @alt.setter
     def alt(self, alt):
@@ -98,7 +126,10 @@ class Target(object):
     @property
     def ang(self):
         """float: The sky angle (degrees) of the target."""
-        return math.degrees(self.ang_rad)
+        try:
+            return math.degrees(self.ang_rad)
+        except TypeError:
+            return None
 
     @ang.setter
     def ang(self, ang):
@@ -114,7 +145,10 @@ class Target(object):
     @property
     def az(self):
         """float: The azimuth (degrees) of the target."""
-        return math.degrees(self.az_rad)
+        try:
+            return math.degrees(self.az_rad)
+        except TypeError:
+            return None
 
     @az.setter
     def az(self, az):
@@ -130,7 +164,10 @@ class Target(object):
     @property
     def dec(self):
         """float: The declination (degrees) of the target."""
-        return math.degrees(self.dec_rad)
+        try:
+            return math.degrees(self.dec_rad)
+        except TypeError:
+            return None
 
     @dec.setter
     def dec(self, dec):
@@ -146,7 +183,10 @@ class Target(object):
     @property
     def ra(self):
         """float: The right ascension (degrees) of the target."""
-        return math.degrees(self.ra_rad)
+        try:
+            return math.degrees(self.ra_rad)
+        except TypeError:
+            return None
 
     @ra.setter
     def ra(self, ra):
@@ -162,7 +202,10 @@ class Target(object):
     @property
     def rot(self):
         """float: The rotator angle (degrees) of the target."""
-        return math.degrees(self.rot_rad)
+        try:
+            return math.degrees(self.rot_rad)
+        except TypeError:
+            return None
 
     @rot.setter
     def rot(self, rot):
@@ -176,126 +219,14 @@ class Target(object):
         self.rot_rad = math.radians(rot)
 
     @property
-    def telalt(self):
-        """float: The telescope altitude (degrees) for the target."""
-        return math.degrees(self.telalt_rad)
-
-    @telalt.setter
-    def telalt(self, telalt):
-        """
-        Set camera rotation angle given in degrees
-
-        Parameters
-        ----------
-         telalt: float (degrees)
-        """
-        self.telalt_rad = math.radians(telalt)
-
-    @property
-    def telaz(self):
-        """float: The telescope azimuth (degrees) for the target."""
-        return math.degrees(self.telaz_rad)
-
-    @telaz.setter
-    def telaz(self, telaz):
-        """
-        Set camera rotation angle given in degrees
-
-        Parameters
-        ----------
-         telaz: float (degrees)
-        """
-        self.telaz_rad = math.radians(telaz)
-
-    @property
-    def telrot(self):
-        """float: The telescope rotator angle (degrees) for the target."""
-        return math.degrees(self.telrot_rad)
-
-    @telrot.setter
-    def telrot(self, telrot):
-        """
-        Set camera rotation angle given in degrees
-
-        Parameters
-        ----------
-         telrot: float (degrees)
-        """
-        self.telrot_rad = math.radians(telrot)
-
-    @property
-    def exp_time(self):
+    def total_exp_time(self):
         """
 
         Returns
         -------
-        exp_time: float: The total exposure time in seconds.
+        exp_time: float: The total on-sky exposure time in seconds.
         """
-        if self._exp_time is None:
-            return sum(self.exp_times)
-        else:
-            return self._exp_time
-
-    @exp_time.setter
-    def exp_time(self, exp_time):
-        """
-
-        Parameters
-        ----------
-        exp_time: float: The total exposure time in seconds.
-
-        Returns
-        -------
-        None
-        """
-        self._exp_time = exp_time
-
-    def copy_driver_state(self, target):
-        """Copy driver state from another target.
-
-        Parameters
-        ----------
-        target : :class:`.Target`
-            An instance of a target from which to get the driver state
-            information.
-        """
-        self.alt_rad = target.alt_rad
-        self.az_rad = target.az_rad
-        self.rot_rad = target.rot_rad
-        self.telalt_rad = target.telalt_rad
-        self.telaz_rad = target.telaz_rad
-        self.telrot_rad = target.telrot_rad
-        self.ang_rad = target.ang_rad
-
-    def get_copy(self):
-        """:class:`.Target`: Get copy of the instance."""
-        newtarget = Target()
-        newtarget.targetid = self.targetid
-        newtarget.fieldid = self.fieldid
-        newtarget.filterband = self.filterband
-        newtarget.ra_rad = self.ra_rad
-        newtarget.dec_rad = self.dec_rad
-        newtarget.ang_rad = self.ang_rad
-        newtarget.num_exp = self.num_exp
-        newtarget.exp_times = list(self.exp_times)
-
-        newtarget.time = self.time
-        newtarget.airmass = self.airmass
-        newtarget.sky_brightness = self.sky_brightness
-        newtarget.cloud = self.cloud
-        newtarget.seeing = self.seeing
-
-        newtarget.alt_rad = self.alt_rad
-        newtarget.az_rad = self.az_rad
-        newtarget.rot_rad = self.rot_rad
-        newtarget.telalt_rad = self.telalt_rad
-        newtarget.telaz_rad = self.telaz_rad
-        newtarget.telrot_rad = self.telrot_rad
-        newtarget.slewtime = self.slewtime
-
-        newtarget.note = self.note
-
-        return newtarget
+        return self._exp_time
 
     def to_json(self):
         """
@@ -306,8 +237,9 @@ class Target(object):
     def from_json(self, jsonstr):
         """
         alternate __init__ method that takes a json representation as the only argument
+        (this likely needs an update, to enable specification of a target via alt/az and rot OR ang)
         """
-        mandatory_fields = ["targetid", "fieldid", "filterband", "ra_rad", "dec_rad",
+        mandatory_fields = ["targetid", "filterband", "ra_rad", "dec_rad",
                             "ang_rad", "num_exp", "exp_times"]
 
         jsondict = json.loads(jsonstr)
@@ -316,13 +248,13 @@ class Target(object):
                 raise KeyError("json blob passed to Target()'s json constructor "
                                "is missing required attribute: " + f)
 
-
         for k in jsondict:
             setattr(self, k, jsondict[k])
 
     @classmethod
     def from_topic(cls, topic):
         """Alternate initializer.
+        (This likely needs an update, to enable specification of a target via alt/az and rot OR skyAngle).
 
         Parameters
         ----------
@@ -333,6 +265,7 @@ class Target(object):
         -------
         :class:`.Target`
         """
-        return cls(topic.targetId, -1, topic.filter, math.radians(topic.ra),
-                   math.radians(topic.decl), math.radians(topic.skyAngle), topic.numExposures,
-                   topic.exposureTimes)
+        return cls(topic.targetId, topic.filter,
+                   math.radians(topic.ra), math.radians(topic.decl), math.radians(topic.skyAngle),
+                   None, None, None,
+                   topic.numExposures, topic.exposureTimes)
