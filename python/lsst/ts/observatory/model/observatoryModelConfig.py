@@ -71,7 +71,7 @@ class ObservatoryModelConfig(pexConfig.Config):
     """A pex_config configuration class for the observatory model as a 'scheduler' model."""
     efd_columns = pexConfig.ListField(doc="List of data required from EFD",
                                       dtype=str,
-                                      default=['observatory_state'])
+                                      default=['time'])
     efd_delta_time = pexConfig.Field(
         doc="Length (delta time) of history to request from the EFD (seconds)",
         dtype=float,
@@ -79,7 +79,7 @@ class ObservatoryModelConfig(pexConfig.Config):
     target_columns = pexConfig.ListField(doc="Names of the keys required in the "
                                              "scheduler target maps (altitude/azimuth)",
                                          dtype=str,
-                                         default=['altitude', 'azimuth'])
+                                         default=['altitude', 'azimuth', 'filter'])
 
 
 class TelescopeModelConfig(pexConfig.Config):
@@ -97,6 +97,10 @@ class TelescopeModelConfig(pexConfig.Config):
     azimuth_maxpos = pexConfig.Field(doc="Maximum position limit for the azimuth (deg) due to cable wrap",
                                      dtype=float,
                                      default=270.0)
+    azimuth_wrap_padding = pexConfig.Field(doc="Padding parameter for the azimuth max positions (deg) due to"
+                                               "cable wrap.",
+                                           dtype=float,
+                                           default=50.0)
 
     altitude_maxspeed = pexConfig.Field(doc="Telescope maximum speed (deg/sec) for the altitude",
                                         dtype=float,

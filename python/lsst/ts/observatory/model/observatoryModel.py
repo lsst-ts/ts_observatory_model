@@ -2,9 +2,9 @@ import logging
 import warnings
 import math
 import numpy as np
-import palpy as pal
 from astropy.time import TimeDelta
 from .observatoryModelConfig import Config
+from .utils import get_closest_angle_distance
 from lsst.ts.observatory.model import ObservatoryPosition, ObservatoryState
 
 warnings.filterwarnings("ignore",
@@ -140,6 +140,47 @@ class ObservatoryModel(object):
         OrderedDict
         """
         return self.conf.config_info()
+
+    def __call__(self, efdData, targetDict):
+        """Return the current state of the observatory. Ideally, called at the end of an exposure.
+        If given a targetmap in alt/az/filter as part of the targetDict, will also
+        return the approximate slew delay for these values.
+
+        Note that there should be some thought spent here about the observatory model in simulations
+        vs in operations. In particular, the delay between when targets are requested/set in the queue
+        compared to when they are executed should be taken into consideration for use.
+
+        There is also some inconsistency here with other "Models" .. here the ObservatoryModel both
+        predicts how the observatory will move/behave, and is also simulating the actual behavior of the
+        telescope. This is reflected in that the ObservatoryModel tracks time and state, and also
+        predicts slew times. It may make sense to split this Model into the approximate slew delay estimates
+        and then a separate "Simulated" or "Acting" Observatory model.
+
+        Parameters
+        ----------
+        efdData: dict
+            Dictionary of input telemetry, typically from the EFD.
+            This must contain columns self.efd_requirements.
+            (work in progress on handling time history).
+        targetDict: dict
+            Dictionary of target map values over which to calculate the processed telemetry.
+            (e.g. targetDict = {'ra': [], 'dec': [], 'altitude': [], 'azimuth': [], 'airmass': []})
+            Here we use 'altitude' and 'azimuth', which should be numpy arrays .
+
+        Returns
+        -------
+        dict of ObservatoryState, nd.array
+            ObservatoryState and an array of slewtimes to the alt/az/filter values.
+        """
+        self.update_state(efdData['time'])
+        if 'altitude' in targetDict and 'azimuth' in targetDict and 'filter' in targetDict:
+            approximate_slew_delays = self.get_approximate_slew_delay(targetDict['altitude'],
+                                                                      targetDict['azimuth'],
+                                                                      targetDict['filter'],
+                                                                      lax_dome=True)
+        else:
+            approximate_slew_delays = None
+        return {'state': self.current_state, 'slew_delays': approximate_slew_delays}
 
     @staticmethod
     def compute_kinematic_delay(distance, maxspeed, accel, decel, free_range=0.):
@@ -278,8 +319,8 @@ class ObservatoryModel(object):
 
         # Calculate how long the telescope will take to slew to this position with cable wrap on azimuth
         current_abs_rad = self.current_state.telaz_rad
-        max_abs_rad = self.conf.telrad["telaz_maxpos_rad"]
-        min_abs_rad = self.conf.telrad["telaz_minpos_rad"]
+        max_abs_rad = self.conf.telrad['azimuth_maxpos_rad']
+        min_abs_rad = self.conf.telrad['azimuth_minpos_rad']
 
         norm_az_rad = np.divmod(az_rad - min_abs_rad, TWOPI)[1] + min_abs_rad
         if type(norm_az_rad) is float and norm_az_rad > max_abs_rad:
@@ -305,8 +346,9 @@ class ObservatoryModel(object):
         telAzSlewTime = self._uamSlewTime(np.abs(distance_rad), self.conf.telrad['azimuth_maxspeed_rad'],
                                           self.conf.telrad['azimuth_accel_rad'])
         totTelTime = np.maximum(telAltSlewTime, telAzSlewTime)
+
         # Time for open loop optics correction
-        olTime = deltaAlt / self.conf.optics.tel_optics_ol_slope
+        olTime = deltaAlt / self.conf.opticsrad['tel_optics_ol_slope_rad']
         totTelTime += olTime
         # Add time for telescope settle.
         settleAndOL = np.where(totTelTime > 0)
@@ -372,7 +414,7 @@ class ObservatoryModel(object):
                                             self.conf.camera.filter_change_time)
         # Add closed loop optics correction
         # Find the limit where we must add the delay
-        cl_limit = self.conf.optics.tel_optics_cl_alt_limit[1]
+        cl_limit = self.conf.opticsrad['tel_optics_cl_alt_limit_rad'][1]
         cl_delay = self.conf.optics.tel_optics_cl_delay[1]
         closeLoop = np.where(deltaAlt >= cl_limit)
         slewTime[closeLoop] += cl_delay
@@ -382,61 +424,6 @@ class ObservatoryModel(object):
                                  (alt_rad < self.conf.telrad['altitude_minpos_rad']))
         slewTime[outsideLimits] = -1
         return slewTime
-
-    def get_closest_angle_distance(self, target_rad, current_abs_rad,
-                                   min_abs_rad=None, max_abs_rad=None):
-        """Calculate the closest angular distance including handling \
-           cable wrap if necessary.
-
-        Parameters
-        ----------
-        target_rad : float
-            The destination angle (radians).
-        current_abs_rad : float
-            The current angle (radians).
-        min_abs_rad : float, optional
-            The minimum constraint angle (radians).
-        max_abs_rad : float, optional
-            The maximum constraint angle (radians).
-
-        Returns
-        -------
-        tuple(float, float)
-            (accumulated angle in radians, distance angle in radians)
-        """
-        # if there are wrap limits, normalizes the target angle
-        if min_abs_rad is not None:
-            norm_target_rad = divmod(target_rad - min_abs_rad, TWOPI)[1] + min_abs_rad
-            if max_abs_rad is not None:
-                # if the target angle is unreachable
-                # then sets an arbitrary value
-                if norm_target_rad > max_abs_rad:
-                    norm_target_rad = max(min_abs_rad, norm_target_rad - math.pi)
-        else:
-            norm_target_rad = target_rad
-
-        # computes the distance clockwise
-        distance_rad = divmod(norm_target_rad - current_abs_rad, TWOPI)[1]
-
-        # take the counter-clockwise distance if shorter
-        if distance_rad > math.pi:
-            distance_rad = distance_rad - TWOPI
-
-        # if there are wrap limits
-        if (min_abs_rad is not None) and (max_abs_rad is not None):
-            # compute accumulated angle
-            accum_abs_rad = current_abs_rad + distance_rad
-
-            # if limits reached chose the other direction
-            if accum_abs_rad > max_abs_rad:
-                distance_rad = distance_rad - TWOPI
-            if accum_abs_rad < min_abs_rad:
-                distance_rad = distance_rad + TWOPI
-
-        # compute final accumulated angle
-        final_abs_rad = current_abs_rad + distance_rad
-
-        return (final_abs_rad, distance_rad)
 
     def get_closest_state(self, targetposition, istracking=False):
         """Find the closest observatory state for the given target position.
@@ -508,8 +495,10 @@ class ObservatoryModel(object):
 
         # Check azimuith for target - including possible cable wrap
         if istracking:
-            (telaz_rad, delta) = self.get_closest_angle_distance(targetposition.az_rad,
-                                                                 self.current_state.telaz_rad)
+            (telaz_rad, delta) = get_closest_angle_distance(targetposition.az_rad,
+                                                                 self.current_state.telaz_rad,
+                                                                 wrap_padding=
+                                                                 self.conf.telrad['azimuth_wrap_padding_rad'])
             if telaz_rad < self.conf.telrad['azimuth_minpos_rad']:
                 telaz_rad = self.conf.telrad['azimuth_minpos_rad']
                 valid_state = False
@@ -533,17 +522,17 @@ class ObservatoryModel(object):
                                                 self.current_state.fail_value_table["azEmax"]
 
         else:
-            (telaz_rad, delta) = self.get_closest_angle_distance(targetposition.az_rad,
+            (telaz_rad, delta) = get_closest_angle_distance(targetposition.az_rad,
                                                                  self.current_state.telaz_rad,
                                                                  self.conf.telrad['azimuth_minpos_rad'],
                                                                  self.conf.telrad['azimuth_maxpos_rad'])
 
-        (domaz_rad, delta) = self.get_closest_angle_distance(targetposition.az_rad,
+        (domaz_rad, delta) = get_closest_angle_distance(targetposition.az_rad,
                                                              self.current_state.domaz_rad)
 
         # Check rotator angle
         if istracking:
-            (telrot_rad, delta) = self.get_closest_angle_distance(targetposition.rot_rad,
+            (telrot_rad, delta) = get_closest_angle_distance(targetposition.rot_rad,
                                                                   self.current_state.telrot_rad)
             if telrot_rad < self.conf.rotrad['minpos_rad']:
                 telrot_rad = self.conf.rotrad['minpos_rad']
@@ -573,7 +562,7 @@ class ObservatoryModel(object):
                 + self.conf.rotrad['minpos_rad']
             if norm_rot_rad > self.conf.rotrad['maxpos_rad']:
                 targetposition.rot_rad = norm_rot_rad - math.pi
-            (telrot_rad, delta) = self.get_closest_angle_distance(targetposition.rot_rad,
+            (telrot_rad, delta) = get_closest_angle_distance(targetposition.rot_rad,
                                                                   self.current_state.telrot_rad,
                                                                   self.conf.rotrad['minpos_rad'],
                                                                   self.conf.rotrad['maxpos_rad'])
@@ -1196,98 +1185,6 @@ class ObservatoryModel(object):
             Does not change current filter or mounted filters.
             """
             self.set_state(self.park_state)
-
-    def calcLst(self, time):
-        """Calculate local sidereal time (in radians) for a given time.
-
-        Parameters
-        ----------
-        time : astropy.time.Time
-
-        Returns
-        -------
-        float
-            local sidereal time
-        """
-        lst = pal.gmst(time.ut1.mjd) + self.site.longitude_rad
-        lst = lst % (2.0 * math.pi)
-        return lst
-
-    def altaz2radecpa(self, lst_rad, alt_rad, az_rad):
-        """Converts alt, az coordinates into ra, dec for the given time.
-
-        Parameters
-        ----------
-        lst_rad : float
-            The local sidereal time in radians
-        alt_rad : float
-            The altitude in radians
-        az_rad : float
-            The azimuth in radians
-
-        Returns
-        -------
-        tuple(float, float, float)
-            (right ascension in radians, declination in radians, parallactic angle in radians)
-        """
-        (ha_rad, dec_rad) = pal.dh2e(az_rad, alt_rad, self.site.latitude_rad)
-        pa_rad = divmod(pal.pa(ha_rad, dec_rad, self.site.latitude_rad), TWOPI)[1]
-        ra_rad = divmod(lst_rad - ha_rad, TWOPI)[1]
-        return (ra_rad, dec_rad, pa_rad)
-
-    def radec2altazpa(self, lst_rad, ra_rad, dec_rad):
-        """Converts ra, de coordinates into alt, az for given time.
-
-        Parameters
-        ----------
-        lst_rad : float
-            The local sidereal time in radians
-        ra_rad : float
-            The right ascension in radians
-        dec_rad : float
-            The declination in radians
-
-        Returns
-        -------
-        tuple(float, float, float)
-            (altitude in radians, azimuth in radians, parallactic angle in
-            radians)
-        """
-        ha_rad = lst_rad - ra_rad
-        (az_rad, alt_rad) = pal.de2h(ha_rad, dec_rad, self.site.latitude_rad)
-        pa_rad = divmod(pal.pa(ha_rad, dec_rad, self.site.latitude_rad), TWOPI)[1]
-        return (alt_rad, az_rad, pa_rad)
-
-    def radecang2position(self, time, ra_rad, dec_rad, ang_rad, filterband):
-        """Convert current time, sky location and filter into observatory\
-           position.
-
-        Parameters
-        ----------
-        time : astropy.time.Time
-            The current time.
-        ra_rad : float
-            The current right ascension (radians).
-        dec_rad : float
-            The current declination (radians).
-        ang_rad : float
-            The current sky angle (radians).
-        filterband : str
-            The current band filter.
-
-        Returns
-        -------
-        :class:`.ObservatoryPosition`
-            The observatory position information from inputs.
-        """
-        (alt_rad, az_rad, pa_rad) = self.radec2altazpa(self.calcLst(time), ra_rad, dec_rad)
-
-        position = ObservatoryPosition(time=time, tracking=True,
-                                       ra_rad=ra_rad, dec_rad=dec_rad, ang_rad=ang_rad,
-                                       filterband=filterband,
-                                       alt_rad=alt_rad, az_rad=az_rad, pa_rad=pa_rad,
-                                       rot_rad=divmod(pa_rad - ang_rad, TWOPI)[1])
-        return position
 
     def set_state(self, new_state):
         """Set observatory state from another state.
