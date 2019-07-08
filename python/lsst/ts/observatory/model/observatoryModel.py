@@ -96,6 +96,7 @@ class ObservatoryModel(object):
         self.conf.validate()
         self.conf.freeze()
         self.site = self.conf.site
+        self.siteUtils = self.conf.siteUtils
 
         # Set the 'current' state (to defaults, except for filters and time)
         self.current_state = ObservatoryState(self.time)
@@ -1343,13 +1344,14 @@ class ObservatoryModel(object):
 
         if self.current_state.tracking:
 
-            targetposition = self.radecang2position(time,
+            target = Target
+            obsposition = self.radecang2position(time,
                                                     self.current_state.ra_rad,
                                                     self.current_state.dec_rad,
                                                     self.current_state.ang_rad,
                                                     self.current_state.filterband)
 
-            targetstate = self.get_closest_state(targetposition, istracking=True)
+            targetstate = self.get_closest_state(obsposition, istracking=True)
 
             self.current_state.time = targetstate.time
             self.current_state.alt_rad = targetstate.alt_rad

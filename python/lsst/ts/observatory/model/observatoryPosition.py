@@ -1,117 +1,68 @@
 import math
 from .utils import SiteUtils
-from .target import Target
 
 __all__ = ["ObservatoryPosition"]
 
 
 class ObservatoryPosition(object):
     """Class for providing base pointing position information.
-    This is a fully defined position at a particular TIME.
+    This is a fully defined position at a particular TIME from a particular SITE.
+    (i.e. a target + time + site == position).
 
-    Note that "time" and "tracking" are key parameters.
-    If "tracking" is True, then RA/Dec/ang will remain up-to-date, while
-    the alt/az/rot values will change over time.
-    If "tracking" is False, then alt/az/rot values will remain up-to-date,
-    while the RA/Dec/ang values will change over time.
-    (PA - the parallactic angle) will always change over time.
+    Note that "time" and "site" are key parameters.
+    "site" is used to calculate alt/az from ra/dec.
+    (PA - the parallactic angle) will always change over time, but either ra/dec OR alt/az will be constant.
+    pa_rad = parallactic angle (radians) of the target [angle between lines to zenith and north]
+    ang_rad = The sky angle (radians) of the target [angle between y and N]. (rotSkyPos)
+    rot_rad = The angle (radians) of the target [angle between y and zenith/up]. (rotTelPos)
+    ang_rad = (pa_rad - rot_rad) % 2pi
 
     Parameters
     ----------
-    time : astropy.time.Time, opt
+    time : astropy.time.Time
         The time for the given pointing information.
-    ra_rad : float, opt
-        The right ascension (radians) for the pointing position.
-    dec_rad : float, opt
-        The declination (radians) for the pointing position.
-    ang_rad : float, opt
-        The position angle (radians) for the pointing position (angle between y & N). [rotSkyPos].
-    filterband : str, opt
-        The band filter being used during the pointing.
-    tracking : bool, opt
-        The tracking state of the pointing.
-    alt_rad : float, opt
-        The altitude (radians) of the pointing.
-    az_rad : float, opt
-        The azimuth (radians) of the pointing.
-    pa_rad : float, opt
-        The parallactic angle (radians) of the pointing.
-    rot_rad : float, opt
-        The camera rotator angle (radians) of the pointing (between y & zenith). [rotTelPos].
+    target : lsst.ts.observatory.model.Target
+        The desired pointing location. Note that either ra/dec or alt/az need to be specified, together
+        with either rotSkyPos or rotTelPos.
     site : lsst.ts.observatory.model.SiteUtils, opt
+        Location of site (lsst.sims.utils.Site) plus additional utilities to calculate LST and convert
+        between alt/az and ra/dec. Default is LSST site.
     """
 
-    def __init__(self, time=None, ra_rad=0.0, dec_rad=0.0, ang_rad=0.0,
-                 filterband='r', tracking=False, alt_rad=1.5, az_rad=0.0,
-                 pa_rad=0.0, rot_rad=0.0, site=None):
-        """Initialize the class.
-        """
-        self.time = time
-        self.ra_rad = ra_rad
-        self.dec_rad = dec_rad
-        self.ang_rad = ang_rad
-        self.filterband = filterband
-        self.tracking = tracking
-        self.alt_rad = alt_rad
-        self.az_rad = az_rad
-        self.pa_rad = pa_rad
-        self.rot_rad = rot_rad
+    def __init__(self, time, target, site=None):
+        # Note that observatoryposition.tracking was removed in this update, as it seemed to be
+        # unused anywhere.
         if site is None:
             self.site = SiteUtils()
         else:
             self.site = site
+        self.time = time
+        self.time = time
+        self.filterband = target.filterband
+        if target.ra_rad is not None:
+            self.ra_rad = target.ra_rad
+            self.dec_rad = target.dec_rad
+            self.alt_rad, self.az_rad, self.pa_rad = self.site.radec2altazpa(self.site.calcLst(self.time),
+                                                                             self.ra_rad, self.dec_rad)
+        elif target.alt_rad is not None:
+            self.alt_rad = target.alt_rad
+            self.az_rad = target.az_rad
+            self.ra_rad, self.dec_rad, self.pa_rad = self.site.altaz2radecpa(self.site.calcLst(self.time),
+                                                                             self.alt_rad, self.az_rad)
+        if target.ang_rad is not None:
+            self.ang_rad = target.ang_rad
+            self.rot_rad = (self.pa_rad - self.ang_rad) % (2 * np.pi)
+        elif target.rot_rad is not None:
+            self.rot_rad = target.rot_rad
+            self.ang_rad = (self.pa_rad - self.rot_rad) % (2 * np.pi)
+
 
     def __str__(self):
         """str: The string representation of the instance."""
-        return "t=%f ra=%.3f dec=%.3f ang=%.3f filter=%s track=%s alt=%.3f "\
+        return "t=%f ra=%.3f dec=%.3f ang=%.3f filter=%s alt=%.3f "\
                "az=%.3f pa=%.3f rot=%.3f" % \
                (self.time.tai.mjd, self.ra, self.dec, self.ang, self.filterband,
-                self.tracking, self.alt, self.az, self.pa, self.rot)
-
-    def setPositionFromTarget(self, target, time):
-        """Using the parameters in Target, calculate a full ObservatoryPosition.
-
-        Parameters
-        ----------
-        target : lsst.ts.observatory.Target
-            The desired target pointing
-        time : astropy.time.Time
-            The time to implement the target pointing at (i.e. specifies alt/az from ra/dec,
-            or vice versa, and rotator angle from skyAng or vice versa.)
-        """
-
-
-
-    def radecang2position(self, time, ra_rad, dec_rad, ang_rad, filterband):
-        """Convert current time, sky location and filter into observatory\
-           position.
-
-        Parameters
-        ----------
-        time : astropy.time.Time
-            The current time.
-        ra_rad : float
-            The current right ascension (radians).
-        dec_rad : float
-            The current declination (radians).
-        ang_rad : float
-            The current sky angle (radians).
-        filterband : str
-            The current band filter.
-
-        Returns
-        -------
-        :class:`.ObservatoryPosition`
-            The observatory position information from inputs.
-        """
-        (alt_rad, az_rad, pa_rad) = self.radec2altazpa(self.calcLst(time), ra_rad, dec_rad)
-
-        position = ObservatoryPosition(time=time, tracking=True,
-                                       ra_rad=ra_rad, dec_rad=dec_rad, ang_rad=ang_rad,
-                                       filterband=filterband,
-                                       alt_rad=alt_rad, az_rad=az_rad, pa_rad=pa_rad,
-                                       rot_rad=divmod(pa_rad - ang_rad, TWOPI)[1])
-        return position
+                self.alt, self.az, self.pa, self.rot)
 
     @property
     def alt(self):

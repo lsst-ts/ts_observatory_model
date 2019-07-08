@@ -4,6 +4,7 @@ import lsst.pex.config as pexConfig
 from lsst.sims.utils import Site
 import lsst.sims.utils.version as sims_utils_version
 from lsst.ts.observatory.model import version
+from .utils import SiteUtils
 
 __all__ = ['Config', 'ObservatoryModelConfig', 'TelescopeModelConfig', 'DomeModelConfig',
            'RotatorModelConfig', 'CameraModelConfig', 'OpticsLoopCorrectionModelConfig',
@@ -17,6 +18,7 @@ class Config(object):
         # Track version of site
         self.site_version = sims_utils_version.__version__
         self.site_sha = sims_utils_version.__fingerprint__
+        self.siteUtils = SiteUtils(self.site)
 
         self.observatory = ObservatoryModelConfig()
         self.telescope = TelescopeModelConfig()

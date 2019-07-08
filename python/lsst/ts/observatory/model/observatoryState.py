@@ -7,6 +7,7 @@ __all__ = ["ObservatoryState"]
 
 class ObservatoryState(ObservatoryPosition):
     """Class for collecting the current state of the observatory.
+    The ObservatoryState = ObservatoryPosition + 'history' (i.e. angles including wrap)
 
     Parameters
     ----------

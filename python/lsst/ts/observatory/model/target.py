@@ -9,7 +9,7 @@ class Target(object):
     """Target defines a desired pointing for the telescope.
 
     Target is converted to a full ObservatoryPosition (which specifies the complete details of the pointing)
-    when a specific TIME is added to the calculation.
+    when a specific TIME is added to the calculation (and essentially, site).
     That is, at a given time, ra/dec implies a particular alt/az (or vice versa) and these will be calculated
     by the ObservatoryPosition.
     In addition, at any given time, the parallactic angle (angle between North and the zenith) for the
@@ -40,6 +40,7 @@ class Target(object):
     alt_rad : float, opt
         The altitude (radians) of the target. Default None.
         If alt_rad is specified (and not ra_rad), the input is expected to be alt/az.
+        If ra/dec is specified, the alt/az will be ignored.
     az_rad : float, opt
         The azimuth (radians) of of the target. Default None.
     rot_rad : float, opt
@@ -100,7 +101,8 @@ class Target(object):
 
     def __str__(self):
         """str: The string representation of the instance."""
-        s = f'targetid {self.targetid} filterband {self.filterband} numexp {self.num_exp} exp_times {self.exp_times}'
+        s = f'targetid {self.targetid} filterband {self.filterband} numexp {self.num_exp} ' \
+            f'exp_times {self.exp_times}'
         s += f' ra {self.ra} dec {self.dec} ang {self.ang} alt {self.alt} az {self.az} rot {self.rot}'
         return s
 
