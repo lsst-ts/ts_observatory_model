@@ -23,7 +23,6 @@ import math
 import unittest
 
 from lsst.ts.observatory.model import Target
-import lsst.utils.tests
 
 
 class TargetTest(unittest.TestCase):
@@ -188,14 +187,5 @@ class TargetTest(unittest.TestCase):
         self.assertListEqual(target.exp_times, topic.exposureTimes)
 
 
-class MemoryTestClass(lsst.utils.tests.MemoryTestCase):
-    pass
-
-
-def setup_module(module):
-    lsst.utils.tests.init()
-
-
 if __name__ == "__main__":
-    lsst.utils.tests.init()
     unittest.main()

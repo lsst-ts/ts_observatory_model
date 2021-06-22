@@ -24,7 +24,6 @@ import unittest
 
 from lsst.ts.dateloc import ObservatoryLocation
 from lsst.ts.observatory.model import ObservatoryModel, Target
-import lsst.utils.tests
 
 
 class ObservatoryModelTest(unittest.TestCase):
@@ -941,14 +940,5 @@ class ObservatoryModelTest(unittest.TestCase):
         self.assertEqual(len(cd["camera"]), 10)
 
 
-class MemoryTestClass(lsst.utils.tests.MemoryTestCase):
-    pass
-
-
-def setup_module(module):
-    lsst.utils.tests.init()
-
-
 if __name__ == "__main__":
-    lsst.utils.tests.init()
     unittest.main()

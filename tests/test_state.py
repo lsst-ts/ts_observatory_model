@@ -22,7 +22,6 @@ import math
 import unittest
 
 from lsst.ts.observatory.model import ObservatoryState
-import lsst.utils.tests
 
 
 class ObservatoryStateTest(unittest.TestCase):
@@ -186,14 +185,5 @@ class ObservatoryStateTest(unittest.TestCase):
         )
 
 
-class MemoryTestClass(lsst.utils.tests.MemoryTestCase):
-    pass
-
-
-def setup_module(module):
-    lsst.utils.tests.init()
-
-
 if __name__ == "__main__":
-    lsst.utils.tests.init()
     unittest.main()
