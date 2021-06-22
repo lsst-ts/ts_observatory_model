@@ -20,37 +20,45 @@
 
 import math
 import numpy
-import copy
 import json
 
 __all__ = ["Target"]
 
-class Target(object):
-    """Class for gathering information for a sky target.
-    """
 
-    def __init__(self, targetid=0, fieldid=0, band_filter="",
-                 ra_rad=0.0, dec_rad=0.0, ang_rad=0.0,
-                 num_exp=0, exp_times=[]):
+class Target(object):
+    """Class for gathering information for a sky target."""
+
+    def __init__(
+        self,
+        targetid=0,
+        fieldid=0,
+        band_filter="",
+        ra_rad=0.0,
+        dec_rad=0.0,
+        ang_rad=0.0,
+        num_exp=0,
+        exp_times=[],
+        log=None,
+    ):
         """Initialize the class.
 
         Parameters
         ----------
-        targetid : int
+        targetid : `int`
             A unique identifier for the given target.
         fieldid : int
             The ID of the associated OpSim field for the target.
-        band_filter : str
+        band_filter : `str`
             The single character name of the associated band filter.
-        ra_rad : float
+        ra_rad : `float`
             The right ascension (radians) of the target.
-        dec_rad : float
+        dec_rad : `float`
             The declination (radians) of the target.
-        ang_rad : float
+        ang_rad : `float`
             The sky angle (radians) of the target.
-        num_exp : int
+        num_exp : `int`
             The number of requested exposures for the target.
-        exp_times : list[float]
+        exp_times : `list` of `float`
             The set of exposure times for the target. Needs to length
             of num_exp.
         """
@@ -125,36 +133,64 @@ class Target(object):
         # stamped at observation
         self.last_visit_time = 0.0
 
-        self.note = ''
+        self.note = ""
 
     def __str__(self):
         """str: The string representation of the instance."""
-        return ("targetid=%d field=%d filter=%s exp_times=%s ra=%.3f "
-                "dec=%.3f ang=%.3f alt=%.3f az=%.3f rot=%.3f "
-                "telalt=%.3f telaz=%.3f telrot=%.3f "
-                "time=%.1f airmass=%.3f brightness=%.3f "
-                "cloud=%.2f seeing=%.2f "
-                "visits=%i progress=%.2f%% "
-                "seqid=%i ssname=%s groupid=%i groupix=%i "
-                "firstdd=%s ddvisits=%i "
-                "need=%.3f bonus=%.3f value=%.3f propboost=%.3f "
-                "propid=%s need=%s bonus=%s value=%s propboost=%s "
-                "slewtime=%.3f cost=%.3f rank=%.3f note=%s" %
-                (self.targetid, self.fieldid, self.filter,
-                 str(self.exp_times),
-                 self.ra, self.dec, self.ang,
-                 self.alt, self.az, self.rot,
-                 self.telalt, self.telaz, self.telrot,
-                 self.time, self.airmass, self.sky_brightness,
-                 self.cloud, self.seeing,
-                 self.visits, 100 * self.progress,
-                 self.sequenceid, self.subsequencename,
-                 self.groupid, self.groupix,
-                 self.is_dd_firstvisit, self.remaining_dd_visits,
-                 self.need, self.bonus, self.value, self.propboost,
-                 self.propid_list, numpy.round(self.need_list, 3), numpy.round(self.bonus_list, 3),
-                 numpy.round(self.value_list, 3), numpy.round(self.propboost_list, 3),
-                 self.slewtime, self.cost, self.rank, self.note))
+        return (
+            "targetid=%d field=%d filter=%s exp_times=%s ra=%.3f "
+            "dec=%.3f ang=%.3f alt=%.3f az=%.3f rot=%.3f "
+            "telalt=%.3f telaz=%.3f telrot=%.3f "
+            "time=%.1f airmass=%.3f brightness=%.3f "
+            "cloud=%.2f seeing=%.2f "
+            "visits=%i progress=%.2f%% "
+            "seqid=%i ssname=%s groupid=%i groupix=%i "
+            "firstdd=%s ddvisits=%i "
+            "need=%.3f bonus=%.3f value=%.3f propboost=%.3f "
+            "propid=%s need=%s bonus=%s value=%s propboost=%s "
+            "slewtime=%.3f cost=%.3f rank=%.3f note=%s"
+            % (
+                self.targetid,
+                self.fieldid,
+                self.filter,
+                str(self.exp_times),
+                self.ra,
+                self.dec,
+                self.ang,
+                self.alt,
+                self.az,
+                self.rot,
+                self.telalt,
+                self.telaz,
+                self.telrot,
+                self.time,
+                self.airmass,
+                self.sky_brightness,
+                self.cloud,
+                self.seeing,
+                self.visits,
+                100 * self.progress,
+                self.sequenceid,
+                self.subsequencename,
+                self.groupid,
+                self.groupix,
+                self.is_dd_firstvisit,
+                self.remaining_dd_visits,
+                self.need,
+                self.bonus,
+                self.value,
+                self.propboost,
+                self.propid_list,
+                numpy.round(self.need_list, 3),
+                numpy.round(self.bonus_list, 3),
+                numpy.round(self.value_list, 3),
+                numpy.round(self.propboost_list, 3),
+                self.slewtime,
+                self.cost,
+                self.rank,
+                self.note,
+            )
+        )
 
     @property
     def alt(self):
@@ -200,7 +236,8 @@ class Target(object):
 
         Parameters
         ----------
-         az: float (degrees)
+         az : `float`
+            Azimuth in degrees.
         """
         self.az_rad = math.radians(az)
 
@@ -216,7 +253,8 @@ class Target(object):
 
         Parameters
         ----------
-         dec: float (degrees)
+         dec : `float`
+            declination in degrees.
         """
         self.dec_rad = math.radians(dec)
 
@@ -232,7 +270,8 @@ class Target(object):
 
         Parameters
         ----------
-         ra: float (degrees)
+         ra : `float`
+            RA in degrees.
         """
         self.ra_rad = math.radians(ra)
 
@@ -248,7 +287,8 @@ class Target(object):
 
         Parameters
         ----------
-         rot: float (degrees)
+        rot : `float`
+            Camera rotation angle in degrees.
         """
         self.rot_rad = math.radians(rot)
 
@@ -264,7 +304,8 @@ class Target(object):
 
         Parameters
         ----------
-         telalt: float (degrees)
+        telalt : `float`
+            Telescope altitude in degrees.
         """
         self.telalt_rad = math.radians(telalt)
 
@@ -280,7 +321,8 @@ class Target(object):
 
         Parameters
         ----------
-         telaz: float (degrees)
+        telaz : `float`
+            Telescope Azimuth in degrees.
         """
         self.telaz_rad = math.radians(telaz)
 
@@ -296,7 +338,8 @@ class Target(object):
 
         Parameters
         ----------
-         telrot: float (degrees)
+        telrot: `float`
+            Camera rotation angle in degrees.
         """
         self.telrot_rad = math.radians(telrot)
 
@@ -306,7 +349,8 @@ class Target(object):
 
         Returns
         -------
-        exp_time: float: The total exposure time in seconds.
+        exp_time: `float`
+            The total exposure time in seconds.
         """
         if self._exp_time is None:
             return sum(self.exp_times)
@@ -319,11 +363,8 @@ class Target(object):
 
         Parameters
         ----------
-        exp_time: float: The total exposure time in seconds.
-
-        Returns
-        -------
-        None
+        exp_time: `float`
+            The total exposure time in seconds.
         """
         self._exp_time = exp_time
 
@@ -418,15 +459,27 @@ class Target(object):
 
     def from_json(self, jsonstr):
         """
-        alternate __init__ method that takes a json representation as the only argument
+        alternate __init__ method that takes a json representation as the only
+        argument.
         """
-        mandatory_fields = ["targetid", "fieldid", "filter", "ra_rad", "dec_rad", "ang_rad", "num_exp", "exp_times"]
+        mandatory_fields = [
+            "targetid",
+            "fieldid",
+            "filter",
+            "ra_rad",
+            "dec_rad",
+            "ang_rad",
+            "num_exp",
+            "exp_times",
+        ]
 
         jsondict = json.loads(jsonstr)
         for f in mandatory_fields:
             if f not in jsondict.keys():
-                raise KeyError("json blob passed to Target()'s json constructor is missing required attribute: " + f)
-
+                raise KeyError(
+                    "json blob passed to Target()'s json constructor is missing required attribute: "
+                    + f
+                )
 
         for k in jsondict:
             setattr(self, k, jsondict[k])
@@ -437,13 +490,20 @@ class Target(object):
 
         Parameters
         ----------
-        topic : SALPY_scheduler.targetC
+        topic : `SALPY_scheduler.targetC`
             The target topic instance.
 
         Returns
         -------
         :class:`.Target`
         """
-        return cls(topic.targetId, -1, topic.filter, math.radians(topic.ra),
-                   math.radians(topic.decl), math.radians(topic.skyAngle), topic.numExposures,
-                   topic.exposureTimes)
+        return cls(
+            topic.targetId,
+            -1,
+            topic.filter,
+            math.radians(topic.ra),
+            math.radians(topic.decl),
+            math.radians(topic.skyAngle),
+            topic.numExposures,
+            topic.exposureTimes,
+        )

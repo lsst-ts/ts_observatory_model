@@ -24,8 +24,8 @@ import unittest
 from lsst.ts.observatory.model import ObservatoryPosition
 import lsst.utils.tests
 
-class ObservatoryPositionTest(unittest.TestCase):
 
+class ObservatoryPositionTest(unittest.TestCase):
     def setUp(self):
         self.ra_truth = 41.010349
         self.dec_truth = -19.985964
@@ -39,19 +39,25 @@ class ObservatoryPositionTest(unittest.TestCase):
         self.ra_rad_truth = math.radians(self.ra_truth)
         self.dec_rad_truth = math.radians(self.dec_truth)
         self.ang_rad_truth = math.radians(self.ang_truth)
-        self.band_filter_truth = 'y'
+        self.band_filter_truth = "y"
         self.tracking_truth = True
         self.alt_rad_truth = math.radians(self.alt_truth)
         self.az_rad_truth = math.radians(self.az_truth)
         self.pa_rad_truth = math.radians(self.pa_truth)
         self.rot_rad_truth = math.radians(self.rot_truth)
 
-        self.op = ObservatoryPosition(self.timestamp, self.ra_rad_truth,
-                                      self.dec_rad_truth, self.ang_rad_truth,
-                                      self.band_filter_truth,
-                                      self.tracking_truth, self.alt_rad_truth,
-                                      self.az_rad_truth, self.pa_rad_truth,
-                                      self.rot_rad_truth)
+        self.op = ObservatoryPosition(
+            self.timestamp,
+            self.ra_rad_truth,
+            self.dec_rad_truth,
+            self.ang_rad_truth,
+            self.band_filter_truth,
+            self.tracking_truth,
+            self.alt_rad_truth,
+            self.az_rad_truth,
+            self.pa_rad_truth,
+            self.rot_rad_truth,
+        )
 
     def test_basic_information_after_creation(self):
         self.assertEqual(self.op.time, self.timestamp)
@@ -66,16 +72,21 @@ class ObservatoryPositionTest(unittest.TestCase):
         self.assertEqual(self.op.rot, self.rot_truth)
 
     def test_string_representation(self):
-        instance_srep = "t=1672534239.9 ra=41.010 dec=-19.986 "\
-                        "ang=175.994 filter=y track=True alt=79.672 "\
-                        "az=353.019 pa=173.585 rot=-2.409"
+        instance_srep = (
+            "t=1672534239.9 ra=41.010 dec=-19.986 "
+            "ang=175.994 filter=y track=True alt=79.672 "
+            "az=353.019 pa=173.585 rot=-2.409"
+        )
         self.assertEqual(str(self.op), instance_srep)
+
 
 class MemoryTestClass(lsst.utils.tests.MemoryTestCase):
     pass
 
+
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()

@@ -31,9 +31,10 @@ __all__ = ["read_conf_file"]
 def read_conf_file(filename):
     """Read the new type of configuration file.
 
-    This function reads the new type of configuration file that contains sections. It also
-    has the capability to take parameters as math expressions and lists. String entries in
-    list parameters do not need to be surrounded by quotes. An example file is shown below:
+    This function reads the new type of configuration file that contains
+    sections. It also has the capability to take parameters as math expressions
+    and lists. String entries in list parameters do not need to be surrounded
+    by quotes. An example file is shown below:
 
     |  [section]
     |  # Floating point parameter
@@ -53,22 +54,24 @@ def read_conf_file(filename):
 
     Parameters
     ----------
-    filename : str
+    filename : `str`
                The configuration file name.
 
     Returns
     -------
-    dict
+    `dict`
         A dictionary from the configuration file.
     """
     config = configparser.ConfigParser()
     config.read(filename)
 
     from collections import defaultdict
+
     config_dict = defaultdict(dict)
-    math_ops = "+,-,*,/".split(',')
+    math_ops = "+,-,*,/".split(",")
     import re
-    paren_match = re.compile(r'\(([^\)]+)\)')
+
+    paren_match = re.compile(r"\(([^\)]+)\)")
 
     for section in config.sections():
         for key, _ in config.items(section):
@@ -90,21 +93,21 @@ def read_conf_file(filename):
 
                     try:
                         # Handle lists from the configuration
-                        if value.startswith('['):
-                            value = value.strip('[]')
+                        if value.startswith("["):
+                            value = value.strip("[]")
                             try:
-                                value = [float(x) for x in value.split(',')]
+                                value = [float(x) for x in value.split(",")]
                             except ValueError:
-                                value = [str(x.strip()) for x in value.split(',')]
+                                value = [str(x.strip()) for x in value.split(",")]
                             if len(value) == 1:
-                                if value[0] == '':
+                                if value[0] == "":
                                     value = []
-                        if value.startswith('('):
+                        if value.startswith("("):
                             val_parts = []
                             matches = paren_match.findall(value)
                             for match in matches:
                                 parts_list = []
-                                parts = match.split(',')
+                                parts = match.split(",")
                                 for part in parts:
                                     try:
                                         parts_list.append(float(part))
