@@ -1,3 +1,23 @@
+# This file is part of ts_observatory_model.
+#
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+
 import math
 from lsst.ts.observatory.model import Target
 import logging
@@ -35,7 +55,7 @@ class Observation(Target):
             The set of exposure times for the target. Needs to length
             of num_exp.
         """
-        
+
         super(Observation, self).__init__(targetid=targetid, fieldid=fieldid, band_filter=band_filter,
                                           ra_rad=ra_rad, dec_rad=dec_rad, ang_rad=ang_rad, num_exp=num_exp,
                                           exp_times=exp_times)
