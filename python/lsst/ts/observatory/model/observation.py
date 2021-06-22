@@ -19,7 +19,8 @@
 # You should have received a copy of the GNU General Public License
 
 import math
-from lsst.ts.observatory.model import Target
+
+from . import Target
 
 __all__ = ["Observation"]
 

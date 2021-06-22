@@ -20,7 +20,7 @@
 
 import math
 
-from lsst.ts.observatory.model import ObservatoryPosition
+from . import ObservatoryPosition
 
 __all__ = ["ObservatoryState"]
 

@@ -26,10 +26,11 @@ import os
 import palpy as pal
 
 from lsst.ts.dateloc import DateProfile, ObservatoryLocation
-from lsst.ts.observatory.model import ObservatoryModelParameters
-from lsst.ts.observatory.model import ObservatoryPosition
-from lsst.ts.observatory.model import ObservatoryState
-from lsst.ts.observatory.model import read_conf_file
+
+from . import ObservatoryModelParameters
+from . import ObservatoryPosition
+from . import ObservatoryState
+from . import read_conf_file
 
 __all__ = ["ObservatoryModel"]
 
