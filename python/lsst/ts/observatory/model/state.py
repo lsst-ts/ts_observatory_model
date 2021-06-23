@@ -1,73 +1,117 @@
+# This file is part of ts_observatory_model.
+#
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+
 import math
 
-from lsst.ts.observatory.model import ObservatoryPosition
+from . import ObservatoryPosition
 
 __all__ = ["ObservatoryState"]
 
-class ObservatoryState(ObservatoryPosition):
-    """Class for collecting the current state of the observatory.
-    """
 
-    def __init__(self, time=0.0, ra_rad=0.0, dec_rad=0.0, ang_rad=0.0,
-                 band_filter='r', tracking=False, alt_rad=1.5, az_rad=0.0,
-                 pa_rad=0.0, rot_rad=0.0, telalt_rad=1.5, telaz_rad=0.0,
-                 telrot_rad=0.0, domalt_rad=1.5, domaz_rad=0.0,
-                 mountedfilters=['g', 'r', 'i', 'z', 'y'],
-                 unmountedfilters=['u']):
+class ObservatoryState(ObservatoryPosition):
+    """Class for collecting the current state of the observatory."""
+
+    def __init__(
+        self,
+        time=0.0,
+        ra_rad=0.0,
+        dec_rad=0.0,
+        ang_rad=0.0,
+        band_filter="r",
+        tracking=False,
+        alt_rad=1.5,
+        az_rad=0.0,
+        pa_rad=0.0,
+        rot_rad=0.0,
+        telalt_rad=1.5,
+        telaz_rad=0.0,
+        telrot_rad=0.0,
+        domalt_rad=1.5,
+        domaz_rad=0.0,
+        mountedfilters=["g", "r", "i", "z", "y"],
+        unmountedfilters=["u"],
+    ):
         """Initialize the class.
 
         Parameters
         ----------
-        time : float
+        time : `float`
             The UTC timestamp (seconds) for the given pointing position
             information.
-        ra_rad : float
+        ra_rad : `float`
             The right ascension (radians) for the pointing position.
-        dec_rad : float
+        dec_rad : `float`
             The declination (radians) for the pointing position.
-        ang_rad : float
+        ang_rad : `float`
 
-        band_filter : str
+        band_filter : `str`
             The band filter being used during the pointing.
-        tracking : bool
+        tracking : `bool`
             The tracking state of the pointing.
-        alt_rad : float
+        alt_rad : `float`
             The altitude (radians) of the pointing.
-        az_rad : float
+        az_rad : `float`
             The azimuth (radians) of the pointing.
-        pa_rad : float
+        pa_rad : `float`
             The parallactic angle (radians) of the pointing.
-        rot_rad : float
+        rot_rad : `float`
 
-        telalt_rad : float
+        telalt_rad : `float`
             The altitude (radians) of the telescope for the given state.
-        telaz_rad : float
+        telaz_rad : `float`
             The azimuth (radians) of the telescope for the given state.
-        telrot_rad : float
+        telrot_rad : `float`
             The telescope rotator angle (radians) for the given state.
-        domalt_rad : float
+        domalt_rad : `float`
             The altitude (radians) of the dome opening for the given state.
-        domaz_rad : float
+        domaz_rad : `float`
             The azimuth (radians) of the dome opening for the given state.
-        mountedfilters : list[str]
+        mountedfilters : `list` of `str`
             The list of band filters currently mounted for the given state.
-        unmountedfilters : list[str]
+        unmountedfilters : `list` of `str`
             The list of band filters currently unmounted for the given state.
-        fail_record : dict[str:int]
+        fail_record : `dict`
             A dictionary of string keys that represent reason of failure, and
             and integer to record the count of that failure.
-        fail_state : int
+        fail_state : `int`
             A unique integer to define the type of target failure that occured.
-        fail_value_table : dict[str:int]
+        fail_value_table : `dict`
             Table used to calculate the fail state.
             ___  ___  ___  ___  ___  ___
              |    |    |    |    |    |
             rot  rot  az   az   alt  alt
             min  max  max  min  max  min
         """
-        ObservatoryPosition.__init__(self, time, ra_rad, dec_rad, ang_rad,
-                                     band_filter, tracking, alt_rad, az_rad,
-                                     pa_rad, rot_rad)
+        ObservatoryPosition.__init__(
+            self,
+            time,
+            ra_rad,
+            dec_rad,
+            ang_rad,
+            band_filter,
+            tracking,
+            alt_rad,
+            az_rad,
+            pa_rad,
+            rot_rad,
+        )
 
         self.telalt_rad = telalt_rad
         self.telalt_peakspeed_rad = 0
@@ -83,15 +127,25 @@ class ObservatoryState(ObservatoryPosition):
         self.unmountedfilters = list(unmountedfilters)
         self.fail_record = {}
         self.fail_state = 0
-        self.fail_value_table = {"altEmax": 1, "altEmin": 2,
-                                 "azEmax": 4, "azEmin" : 8,
-                                 "rotEmax": 16, "rotEmin": 32, "filter": 64}
+        self.fail_value_table = {
+            "altEmax": 1,
+            "altEmin": 2,
+            "azEmax": 4,
+            "azEmin": 8,
+            "rotEmax": 16,
+            "rotEmin": 32,
+            "filter": 64,
+        }
 
     def __str__(self):
         """str: The string representation of the instance."""
-        return "%s telaz=%.3f telrot=%.3f mounted=%s unmounted=%s" % \
-               (ObservatoryPosition.__str__(self), self.telaz, self.telrot,
-                self.mountedfilters, self.unmountedfilters)
+        return "%s telaz=%.3f telrot=%.3f mounted=%s unmounted=%s" % (
+            ObservatoryPosition.__str__(self),
+            self.telaz,
+            self.telrot,
+            self.mountedfilters,
+            self.unmountedfilters,
+        )
 
     @property
     def domalt(self):
@@ -101,7 +155,7 @@ class ObservatoryState(ObservatoryPosition):
     @property
     def domalt_peakspeed(self):
         """float: Return the altitude peak speed (degrees/sec) of the dome
-                  opening."""
+        opening."""
         return math.degrees(self.domalt_peakspeed_rad)
 
     @property
@@ -112,7 +166,7 @@ class ObservatoryState(ObservatoryPosition):
     @property
     def domaz_peakspeed(self):
         """float: Return the azimuth peak speed (degrees/sec) of the dome
-                  opening."""
+        opening."""
         return math.degrees(self.domaz_peakspeed_rad)
 
     @property
@@ -123,7 +177,7 @@ class ObservatoryState(ObservatoryPosition):
     @property
     def telalt_peakspeed(self):
         """float: Return the altitude peak speed (degrees/sec) of the
-                  telescope."""
+        telescope."""
         return math.degrees(self.telalt_peakspeed_rad)
 
     @property
@@ -134,7 +188,7 @@ class ObservatoryState(ObservatoryPosition):
     @property
     def telaz_peakspeed(self):
         """float: Return the azimuth peak speed (degrees/sec) of the
-                  telescope."""
+        telescope."""
         return math.degrees(self.telaz_peakspeed_rad)
 
     @property
@@ -223,9 +277,9 @@ class ObservatoryState(ObservatoryPosition):
 
         Parameters
         ----------
-        filter_to_mount : str
+        filter_to_mount : `str`
             The name of the band filter to mount.
-        filter_to_unmount : str
+        filter_to_unmount : `str`
             The name of the band filter to unmount.
         """
         self.mountedfilters.remove(filter_to_unmount)
