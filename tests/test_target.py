@@ -1,16 +1,35 @@
+# This file is part of ts_observatory_model.
+#
+# Developed for the Vera Rubin Observatory Telescope and Site Systems.
+# This product includes software developed by the LSST Project
+# (https://www.lsst.org).
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+
 import collections
 import math
 import unittest
 
 from lsst.ts.observatory.model import Target
-import lsst.utils.tests
+
 
 class TargetTest(unittest.TestCase):
-
     def setUp(self):
         self.targetId = 3
         self.fieldId = 2573
-        self.band_filter = 'r'
+        self.band_filter = "r"
         self.ra = 300.518929
         self.dec = -1.720965
         self.ang = 45.0
@@ -34,9 +53,16 @@ class TargetTest(unittest.TestCase):
         self.telaz_rad = math.radians(self.telaz)
         self.telrot_rad = math.radians(self.telrot)
 
-        self.target = Target(self.targetId, self.fieldId, self.band_filter,
-                             self.ra_rad, self.dec_rad, self.ang_rad,
-                             self.num_exposures, self.exposure_times)
+        self.target = Target(
+            self.targetId,
+            self.fieldId,
+            self.band_filter,
+            self.ra_rad,
+            self.dec_rad,
+            self.ang_rad,
+            self.num_exposures,
+            self.exposure_times,
+        )
         self.target.alt_rad = self.alt_rad
         self.target.az_rad = self.az_rad
         self.target.rot_rad = self.rot_rad
@@ -52,7 +78,7 @@ class TargetTest(unittest.TestCase):
         self.assertEqual(self.target.dec, self.dec)
         self.assertEqual(self.target.num_exp, self.num_exposures)
         self.assertListEqual(self.target.exp_times, self.exposure_times)
-    
+
     def test_json_serialization(self):
         jsondump = self.target.to_json()
         target2 = Target()
@@ -69,21 +95,44 @@ class TargetTest(unittest.TestCase):
         self.assertRaises(KeyError, self.init_target_with_bad_json)
 
     def init_target_with_bad_json(self):
-        missingfilter = '{"targetid": 3, "fieldid": 2573, "ra_rad": 5.24504477561707, "dec_rad": -0.030036505561584215, "ang_rad": 0.7853981633974483, "num_exp": 2, "exp_times": [15.0, 15.0], "_exp_time": null, "time": 0.0, "airmass": 0.0, "sky_brightness": 0.0, "cloud": 0.0, "seeing": 0.0, "propid": 0, "need": 0.0, "bonus": 0.0, "value": 0.0, "goal": 0, "visits": 0, "progress": 0.0, "sequenceid": 0, "subsequencename": "", "groupid": 0, "groupix": 0, "is_deep_drilling": false, "is_dd_firstvisit": false, "remaining_dd_visits": 0, "dd_exposures": 0, "dd_filterchanges": 0, "dd_exptime": 0.0, "alt_rad": 0.7853981633974483, "az_rad": 3.9269908169872414, "rot_rad": 0.5235987755982988, "telalt_rad": 0.7853981633974483, "telaz_rad": 3.9269908169872414, "telrot_rad": 0.5235987755982988, "propboost": 1.0, "slewtime": 0.0, "cost": 0.0, "rank": 0.0, "num_props": 0, "propid_list": [], "need_list": [], "bonus_list": [], "value_list": [], "propboost_list": [], "sequenceid_list": [], "subsequencename_list": [], "groupid_list": [], "groupix_list": [], "is_deep_drilling_list": [], "is_dd_firstvisit_list": [], "remaining_dd_visits_list": [], "dd_exposures_list": [], "dd_filterchanges_list": [], "dd_exptime_list": [], "last_visit_time": 0.0, "note": ""}'
+
+        missingfilter = (
+            '{"targetid": 3, "fieldid": 2573, "ra_rad": 5.24504477561707, '
+            '"dec_rad": -0.030036505561584215, "ang_rad": 0.7853981633974483, '
+            '"num_exp": 2, "exp_times": [15.0, 15.0], "_exp_time": null, '
+            '"time": 0.0, "airmass": 0.0, "sky_brightness": 0.0, "cloud": 0.0, '
+            '"seeing": 0.0, "propid": 0, "need": 0.0, "bonus": 0.0, "value": 0.0, '
+            '"goal": 0, "visits": 0, "progress": 0.0, '
+            '"sequenceid": 0, "subsequencename": "", "groupid": 0, "groupix": 0, '
+            '"is_deep_drilling": false, "is_dd_firstvisit": false, "remaining_dd_visits": 0, '
+            '"dd_exposures": 0, "dd_filterchanges": 0, "dd_exptime": 0.0, '
+            '"alt_rad": 0.7853981633974483, "az_rad": 3.9269908169872414, '
+            '"rot_rad": 0.5235987755982988, "telalt_rad": 0.7853981633974483, '
+            '"telaz_rad": 3.9269908169872414, "telrot_rad": 0.5235987755982988, "propboost": 1.0, '
+            '"slewtime": 0.0, "cost": 0.0, "rank": 0.0, "num_props": 0, "propid_list": [], '
+            '"need_list": [], "bonus_list": [], "value_list": [], "propboost_list": [], '
+            '"sequenceid_list": [], "subsequencename_list": [], "groupid_list": [], '
+            '"groupix_list": [], "is_deep_drilling_list": [], '
+            '"is_dd_firstvisit_list": [], "remaining_dd_visits_list": [], '
+            '"dd_exposures_list": [], "dd_filterchanges_list": [], "dd_exptime_list": [], '
+            '"last_visit_time": 0.0, "note": ""}'
+        )
         t = Target()
         t.from_json(missingfilter)
 
     def test_string_representation(self):
-        truth_str = "targetid=3 field=2573 filter=r exp_times=[15.0, 15.0] "\
-                    "ra=300.519 dec=-1.721 ang=45.000 alt=45.000 az=225.000 "\
-                    "rot=30.000 telalt=45.000 telaz=225.000 telrot=30.000 "\
-                    "time=0.0 airmass=0.000 brightness=0.000 "\
-                    "cloud=0.00 seeing=0.00 visits=0 progress=0.00% "\
-                    "seqid=0 ssname= groupid=0 groupix=0 "\
-                    "firstdd=False ddvisits=0 "\
-                    "need=0.000 bonus=0.000 value=0.000 propboost=1.000 "\
-                    "propid=[] need=[] bonus=[] value=[] propboost=[] "\
-                    "slewtime=0.000 cost=0.000 rank=0.000 note="
+        truth_str = (
+            "targetid=3 field=2573 filter=r exp_times=[15.0, 15.0] "
+            "ra=300.519 dec=-1.721 ang=45.000 alt=45.000 az=225.000 "
+            "rot=30.000 telalt=45.000 telaz=225.000 telrot=30.000 "
+            "time=0.0 airmass=0.000 brightness=0.000 "
+            "cloud=0.00 seeing=0.00 visits=0 progress=0.00% "
+            "seqid=0 ssname= groupid=0 groupix=0 "
+            "firstdd=False ddvisits=0 "
+            "need=0.000 bonus=0.000 value=0.000 propboost=1.000 "
+            "propid=[] need=[] bonus=[] value=[] propboost=[] "
+            "slewtime=0.000 cost=0.000 rank=0.000 note="
+        )
         self.assertEqual(str(self.target), truth_str)
 
     def test_driver_state_copy(self):
@@ -107,14 +156,22 @@ class TargetTest(unittest.TestCase):
         self.assertEqual(target2.fieldid, 2142)
 
     def test_creation_from_topic(self):
-        topic = collections.namedtuple('topic', ['targetId', 'fieldId',
-                                                 'filter', 'ra', 'decl',
-                                                 'skyAngle',
-                                                 'numExposures',
-                                                 'exposureTimes'])
+        topic = collections.namedtuple(
+            "topic",
+            [
+                "targetId",
+                "fieldId",
+                "filter",
+                "ra",
+                "decl",
+                "skyAngle",
+                "numExposures",
+                "exposureTimes",
+            ],
+        )
         topic.targetId = 1
         topic.fieldId = -1
-        topic.filter = 'z'
+        topic.filter = "z"
         topic.ra = 274.279376
         topic.decl = -14.441534
         topic.skyAngle = 45.0
@@ -129,12 +186,6 @@ class TargetTest(unittest.TestCase):
         self.assertEqual(target.num_exp, topic.numExposures)
         self.assertListEqual(target.exp_times, topic.exposureTimes)
 
-class MemoryTestClass(lsst.utils.tests.MemoryTestCase):
-    pass
-
-def setup_module(module):
-    lsst.utils.tests.init()
 
 if __name__ == "__main__":
-    lsst.utils.tests.init()
     unittest.main()
