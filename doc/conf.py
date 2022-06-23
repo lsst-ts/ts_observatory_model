@@ -61,7 +61,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "Observatory Model"
-copyright = "2017, LSST Telescope and Site"
+copyright = "2017-2022, LSST Telescope and Site"
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout
