@@ -3,6 +3,12 @@
 History
 -------
 
+1.2.0 (2022-06-23)
+~~~~~~~~~~~~~~~~~~
+
+* Upgrade to pyproject.toml.
+* Update reformat with latest version of black.
+
 1.1.0 (2020-06-22)
 ~~~~~~~~~~~~~~~~~~
 
