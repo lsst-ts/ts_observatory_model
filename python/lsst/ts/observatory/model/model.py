@@ -248,7 +248,7 @@ class ObservatoryModel(object):
         slewTime: `numpy.ndarray`
             Slew time in seconds.
         """
-        dm = vmax ** 2 / accel
+        dm = vmax**2 / accel
         slewTime = np.where(
             distance < dm,
             2 * np.sqrt(distance / accel),
@@ -317,7 +317,7 @@ class ObservatoryModel(object):
             # model dome creep, dome slit, and no azimuth settle
             # if we can fit both exposures in the dome slit, do so
             sameDome = np.where(
-                deltaAlt ** 2 + deltaAz ** 2 < self.params.camera_fov ** 2
+                deltaAlt**2 + deltaAz**2 < self.params.camera_fov**2
             )
 
             # else, we take the minimum time from two options:
