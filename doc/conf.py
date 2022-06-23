@@ -60,8 +60,8 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = u"Observatory Model"
-copyright = u"2017, LSST Telescope and Site"
+project = "Observatory Model"
+copyright = "2017, LSST Telescope and Site"
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout
@@ -234,8 +234,8 @@ latex_documents = [
     (
         "index",
         "ts_observatory_model.tex",
-        u"Observatory Model Documentation",
-        u"Francisco Delgado and Michael Reuter",
+        "Observatory Model Documentation",
+        "Francisco Delgado and Michael Reuter",
         "manual",
     ),
 ]
@@ -269,8 +269,8 @@ man_pages = [
     (
         "index",
         "ts_observatory_model",
-        u"Observatory Model Documentation",
-        [u"Francisco Delgado and Michael Reuter"],
+        "Observatory Model Documentation",
+        ["Francisco Delgado and Michael Reuter"],
         1,
     )
 ]
@@ -288,8 +288,8 @@ texinfo_documents = [
     (
         "index",
         "ts_observatory_model",
-        u"Observatory Model Documentation",
-        u"Francisco Delgado and Michael Reuter",
+        "Observatory Model Documentation",
+        "Francisco Delgado and Michael Reuter",
         "ts_observatory_model",
         "The LSST Obsevatory Model.",
         "Miscellaneous",
