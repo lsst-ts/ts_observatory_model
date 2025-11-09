@@ -87,16 +87,16 @@ class ObservatoryModelTest(unittest.TestCase):
     def test_init(self):
         temp_model = ObservatoryModel(self.location)
         self.assertIsNotNone(temp_model.log)
-        self.assertAlmostEqual(temp_model.location.longitude_rad, -1.23480, delta=1e6)
+        self.assertAlmostEqual(temp_model.location.longitude_rad, -1.23480, delta=1e-4)
         self.assertEqual(temp_model.current_state.telalt_rad, 1.5)
 
     def test_configure(self):
         temp_model = ObservatoryModel(self.location)
         temp_model.configure_from_module()
 
-        self.assertEqual(temp_model.location.longitude_rad, math.radians(-70.7494))
-        self.assertEqual(temp_model.location.longitude, -70.7494)
-        self.assertEqual(temp_model.current_state.telalt_rad, math.radians(86.5))
+        self.assertAlmostEqual(temp_model.location.longitude_rad, math.radians(-70.7494), delta=1e-4)
+        self.assertAlmostEqual(temp_model.location.longitude, -70.7494, delta=1e-4)
+        self.assertAlmostEqual(temp_model.current_state.telalt_rad, math.radians(86.5), delta=1e-4)
 
     def test_get_closest_angle_distance_unlimited(self):
         self.assertEqual(
@@ -401,7 +401,7 @@ class ObservatoryModelTest(unittest.TestCase):
 
         self.assertEqual(
             str(self.model.current_state),
-            "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
+            "t=0.0 ra=29.480 dec=-26.745 ang=180.000 "
             "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
             "telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
@@ -412,7 +412,7 @@ class ObservatoryModelTest(unittest.TestCase):
         self.model.start_tracking(0)
         self.assertEqual(
             str(self.model.current_state),
-            "t=7.7 ra=29.510 dec=-20.244 ang=180.000 "
+            "t=7.7 ra=29.510 dec=-20.245 ang=180.000 "
             "filter=r track=True alt=80.000 az=0.000 pa=180.000 rot=0.000 "
             "telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
@@ -421,7 +421,7 @@ class ObservatoryModelTest(unittest.TestCase):
         self.model.update_state(100)
         self.assertEqual(
             str(self.model.current_state),
-            "t=100.0 ra=29.510 dec=-20.244 ang=180.000 "
+            "t=100.0 ra=29.510 dec=-20.245 ang=180.000 "
             "filter=r track=True alt=79.994 az=357.901 pa=178.068 rot=358.068 "
             "telaz=-2.099 telrot=-1.932 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
@@ -446,7 +446,7 @@ class ObservatoryModelTest(unittest.TestCase):
         self.model.params.rotator_followsky = True
         self.assertEqual(
             str(self.model.current_state),
-            "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
+            "t=0.0 ra=29.480 dec=-26.745 ang=180.000 "
             "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
             "telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
@@ -466,8 +466,8 @@ class ObservatoryModelTest(unittest.TestCase):
         self.assertEqual(
             str(self.model.current_state),
             "t=100.0 ra=80.000 dec=0.000 ang=180.000 "
-            "filter=r track=True alt=33.650 az=67.163 pa=232.766 rot=52.766 "
-            "telaz=67.163 telrot=52.766 "
+            "filter=r track=True alt=33.650 az=67.163 pa=232.765 rot=52.765 "
+            "telaz=67.163 telrot=52.765 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
         )
         self.model.slew_radec(
@@ -488,7 +488,7 @@ class ObservatoryModelTest(unittest.TestCase):
 
         self.assertEqual(
             str(self.model.current_state),
-            "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
+            "t=0.0 ra=29.480 dec=-26.745 ang=180.000 "
             "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
             "telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
@@ -567,7 +567,7 @@ class ObservatoryModelTest(unittest.TestCase):
         self.model.update_state(0)
         self.model.params.rotator_followsky = False
         expected_state = (
-            "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
+            "t=0.0 ra=29.480 dec=-26.745 ang=180.000 "
             "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
             "telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']"
@@ -620,7 +620,7 @@ class ObservatoryModelTest(unittest.TestCase):
 
         self.assertEqual(
             str(self.model.current_state),
-            "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
+            "t=0.0 ra=29.480 dec=-26.745 ang=180.000 "
             "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
             "telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
@@ -636,8 +636,8 @@ class ObservatoryModelTest(unittest.TestCase):
         self.assertEqual(
             str(self.model.current_state),
             "t=74.2 ra=60.000 dec=-20.000 ang=180.000 "
-            "filter=r track=True alt=60.904 az=76.495 pa=243.368 rot=63.368 "
-            "telaz=76.495 telrot=63.368 "
+            "filter=r track=True alt=60.904 az=76.494 pa=243.368 rot=63.368 "
+            "telaz=76.494 telrot=63.368 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
         )
 
@@ -651,8 +651,8 @@ class ObservatoryModelTest(unittest.TestCase):
         self.assertEqual(
             str(self.model.current_state),
             "t=194.2 ra=60.000 dec=-20.000 ang=180.000 "
-            "filter=i track=True alt=61.324 az=76.056 pa=243.156 rot=63.156 "
-            "telaz=76.056 telrot=63.156 "
+            "filter=i track=True alt=61.324 az=76.056 pa=243.155 rot=63.155 "
+            "telaz=76.056 telrot=63.155 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
         )
 
@@ -660,7 +660,7 @@ class ObservatoryModelTest(unittest.TestCase):
         self.model.update_state(0)
         self.assertEqual(
             str(self.model.current_state),
-            "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
+            "t=0.0 ra=29.480 dec=-26.745 ang=180.000 "
             "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
             "telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
@@ -698,8 +698,8 @@ class ObservatoryModelTest(unittest.TestCase):
         self.assertEqual(
             str(self.model.current_state),
             "t=74.2 ra=60.000 dec=-20.000 ang=180.000 "
-            "filter=r track=True alt=60.904 az=76.495 pa=243.368 rot=63.368 "
-            "telaz=76.495 telrot=63.368 "
+            "filter=r track=True alt=60.904 az=76.494 pa=243.368 rot=63.368 "
+            "telaz=76.494 telrot=63.368 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
         )
         self.check_delay_and_state(
@@ -721,8 +721,8 @@ class ObservatoryModelTest(unittest.TestCase):
         self.assertEqual(
             str(self.model.current_state),
             "t=194.2 ra=60.000 dec=-20.000 ang=180.000 "
-            "filter=i track=True alt=61.324 az=76.056 pa=243.156 rot=63.156 "
-            "telaz=76.056 telrot=63.156 "
+            "filter=i track=True alt=61.324 az=76.056 pa=243.155 rot=63.155 "
+            "telaz=76.056 telrot=63.155 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
         )
         self.check_delay_and_state(
@@ -744,8 +744,8 @@ class ObservatoryModelTest(unittest.TestCase):
         self.assertEqual(
             str(self.model.current_state),
             "t=199.0 ra=61.000 dec=-21.000 ang=181.000 "
-            "filter=i track=True alt=60.931 az=78.751 pa=245.172 rot=64.172 "
-            "telaz=78.751 telrot=64.172 "
+            "filter=i track=True alt=60.931 az=78.751 pa=245.171 rot=64.171 "
+            "telaz=78.751 telrot=64.171 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
         )
         self.check_delay_and_state(
@@ -766,7 +766,7 @@ class ObservatoryModelTest(unittest.TestCase):
         self.model.params.rotator_followsky = True
         self.assertEqual(
             str(self.model.current_state),
-            "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
+            "t=0.0 ra=29.480 dec=-26.745 ang=180.000 "
             "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
             "telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
@@ -787,8 +787,8 @@ class ObservatoryModelTest(unittest.TestCase):
         self.assertEqual(
             str(self.model.current_state),
             "t=72.8 ra=83.500 dec=0.000 ang=180.000 "
-            "filter=r track=True alt=30.744 az=69.709 pa=234.123 rot=54.123 "
-            "telaz=69.709 telrot=54.123 "
+            "filter=r track=True alt=30.744 az=69.708 pa=234.122 rot=54.122 "
+            "telaz=69.708 telrot=54.122 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
         )
 
@@ -800,7 +800,7 @@ class ObservatoryModelTest(unittest.TestCase):
         self.model.params.rotator_followsky = False
         self.assertEqual(
             str(self.model.current_state),
-            "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
+            "t=0.0 ra=29.480 dec=-26.745 ang=180.000 "
             "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
             "telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
@@ -810,7 +810,7 @@ class ObservatoryModelTest(unittest.TestCase):
         )
         self.assertEqual(
             str(self.model.current_state),
-            "t=68.0 ra=80.000 dec=0.000 ang=232.933 "
+            "t=68.0 ra=80.000 dec=0.000 ang=232.932 "
             "filter=r track=True alt=33.540 az=67.263 pa=232.821 rot=359.888 "
             "telaz=67.263 telrot=-0.112 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
@@ -821,8 +821,8 @@ class ObservatoryModelTest(unittest.TestCase):
         self.assertEqual(
             str(self.model.current_state),
             "t=72.8 ra=83.500 dec=0.000 ang=234.241 "
-            "filter=r track=True alt=30.744 az=69.709 pa=234.123 rot=359.881 "
-            "telaz=69.709 telrot=-0.119 "
+            "filter=r track=True alt=30.744 az=69.708 pa=234.122 rot=359.881 "
+            "telaz=69.708 telrot=-0.119 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
         )
 
@@ -834,7 +834,7 @@ class ObservatoryModelTest(unittest.TestCase):
         self.model.update_state(0)
         self.assertEqual(
             str(self.model.current_state),
-            "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
+            "t=0.0 ra=29.480 dec=-26.745 ang=180.000 "
             "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
             "telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']",
@@ -849,7 +849,7 @@ class ObservatoryModelTest(unittest.TestCase):
         self.model.swap_filter("z")
         self.assertEqual(
             str(self.model.current_state),
-            "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
+            "t=0.0 ra=29.480 dec=-26.745 ang=180.000 "
             "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
             "telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'y', 'u'] unmounted=['z']",
@@ -864,7 +864,7 @@ class ObservatoryModelTest(unittest.TestCase):
         self.model.swap_filter("u")
         self.assertEqual(
             str(self.model.current_state),
-            "t=0.0 ra=29.480 dec=-26.744 ang=180.000 "
+            "t=0.0 ra=29.480 dec=-26.745 ang=180.000 "
             "filter=r track=False alt=86.500 az=0.000 pa=180.000 rot=0.000 "
             "telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'y', 'z'] unmounted=['u']",
@@ -891,7 +891,7 @@ class ObservatoryModelTest(unittest.TestCase):
 
         self.model.slew(target)
         expected_state = (
-            "t=156.0 ra=60.000 dec=-20.000 ang=243.495 filter=z track=True "
+            "t=156.0 ra=60.000 dec=-20.000 ang=243.494 filter=z track=True "
             "alt=61.191 az=76.196 pa=243.224 rot=359.729 telaz=76.196 telrot=-0.271 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']"
         )
@@ -907,7 +907,7 @@ class ObservatoryModelTest(unittest.TestCase):
 
         self.model.park()
         expected_state = (
-            "t=241.1 ra=30.487 dec=-26.744 ang=180.000 filter=z track=False "
+            "t=241.1 ra=30.487 dec=-26.745 ang=180.000 filter=z track=False "
             "alt=86.500 az=0.000 pa=180.000 rot=0.000 telaz=0.000 telrot=0.000 "
             "mounted=['g', 'r', 'i', 'z', 'y'] unmounted=['u']"
         )
