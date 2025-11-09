@@ -3,6 +3,13 @@
 History
 -------
 
+1.2.1 (2025-11-09)
+~~~~~~~~~~~~~~~~~~
+
+* Updated conda recipe.
+* Updated unit tests.
+* Fixed issue with numpy 2 in get_approximate_slew_delay method.
+
 1.2.0 (2022-06-23)
 ~~~~~~~~~~~~~~~~~~
 
