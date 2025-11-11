@@ -370,10 +370,8 @@ class ObservatoryModel(object):
         # Find the max of the above for slew time.
         slewTime = np.maximum(totTelTime, totDomTime)
         # include filter change time if necessary
-        filterChange = np.where(goal_filter != self.current_state.filter)
-        slewTime[filterChange] = np.maximum(
-            slewTime[filterChange], self.params.filter_changetime
-        )
+        if goal_filter != self.current_state.filter:
+            slewTime = np.maximum(slewTime, self.params.filter_changetime)
         # Add closed loop optics correction
         # Find the limit where we must add the delay
         cl_limit = self.params.optics_cl_altlimit[1]
