@@ -3,6 +3,11 @@
 History
 -------
 
+1.2.3 (2025-11-14)
+~~~~~~~~~~~~~~~~~~
+
+* Made minor fixes to setup.py and conda recipe.
+
 1.2.2 (2025-11-14)
 ~~~~~~~~~~~~~~~~~~
 
